@@ -1,4 +1,4 @@
-// Copyright 2016 Canonical Ltd.
+// Copyright 2024 Canonical Ltd.
 // Licensed under the AGPLv3, see LICENCE file for details.
 
 package application_test
@@ -350,23 +350,6 @@ func (s *configCommandSuite) TestSetAppConfigSuccess(c *gc.C) {
 	}, map[string]interface{}{
 		"trust": "true",
 	}, s.defaultCharmValues)
-}
-
-func (s *configCommandSuite) TestSetSameValue(c *gc.C) {
-	s.assertSetSuccess(c, s.dir, []string{
-		"username=hello",
-		"outlook=hello@world.tld",
-	}, s.defaultAppValues, map[string]interface{}{
-		"username": "hello",
-		"outlook":  "hello@world.tld",
-	})
-	s.assertSetWarning(c, s.dir, []string{
-		"username=hello",
-	}, "the configuration setting \"username\" already has the value \"hello\"")
-	s.assertSetWarning(c, s.dir, []string{
-		"outlook=hello@world.tld",
-	}, "the configuration setting \"outlook\" already has the value \"hello@world.tld\"")
-
 }
 
 func (s *configCommandSuite) TestSetConfigFail(c *gc.C) {
