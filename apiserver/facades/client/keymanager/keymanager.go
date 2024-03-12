@@ -144,6 +144,7 @@ func (api *KeyManagerAPI) currentKeyDataForAdd(ctx context.Context) (keys []stri
 		fingerprint, _, err := ssh.KeyFingerprint(key)
 		if err != nil {
 			api.logger.Warningf("ignoring invalid ssh key %q: %v", key, err)
+			continue
 		}
 		fingerprints.Add(fingerprint)
 	}
@@ -358,7 +359,7 @@ func (api *KeyManagerAPI) DeleteKeys(ctx context.Context, arg params.ModifyUserS
 			keysToDelete.Add(key)
 			return params.ErrorResult{}
 		}
-		return params.ErrorResult{Error: apiservererrors.ServerError(fmt.Errorf("invalid ssh key: %s", keyId))}
+		return params.ErrorResult{Error: apiservererrors.ServerError(fmt.Errorf("key not found: %s", keyId))}
 	})
 
 	var keysToWrite []string

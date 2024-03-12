@@ -223,8 +223,8 @@ func (s *keyManagerSuite) assertDeleteKeys(c *gc.C) {
 	c.Assert(results, gc.DeepEquals, params.ErrorResults{
 		Results: []params.ErrorResult{
 			{Error: nil},
-			{Error: apiservertesting.ServerError("invalid ssh key: " + sshtesting.ValidKeyThree.Fingerprint)},
-			{Error: apiservertesting.ServerError("invalid ssh key: invalid-key")},
+			{Error: apiservertesting.ServerError("key not found: " + sshtesting.ValidKeyThree.Fingerprint)},
+			{Error: apiservertesting.ServerError("key not found: invalid-key")},
 		},
 	})
 }
