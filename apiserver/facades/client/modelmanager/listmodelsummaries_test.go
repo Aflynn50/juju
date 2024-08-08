@@ -168,7 +168,7 @@ func (s *ListModelsWithInfoSuite) setAPIUser(c *gc.C, user names.UserTag) {
 func (s *ListModelsWithInfoSuite) TestListModelSummaries(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 	lastLoginTime := time.Now()
-	s.mockModelService.EXPECT().ListModelSummariesForUser(gomock.Any(), "admin").Return([]coremodel.UserModelSummary{{
+	s.mockModelService.EXPECT().ListModelSummariesForUser(gomock.Any(), usertesting.GenNewName(c, "admin")).Return([]coremodel.UserModelSummary{{
 		UserLastConnection: &lastLoginTime,
 		UserAccess:         permission.AdminAccess,
 		ModelSummary: coremodel.ModelSummary{

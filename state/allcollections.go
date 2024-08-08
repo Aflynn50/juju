@@ -125,12 +125,6 @@ func allCollections() CollectionSchema {
 			global: true,
 		},
 
-		// This collection holds the last time the user connected to the API server.
-		userLastLoginC: {
-			global:    true,
-			rawAccess: true,
-		},
-
 		// This collection is used as a unique key restraint. The _id field is
 		// a concatenation of multiple fields that form a compound index,
 		// allowing us to ensure users cannot have the same name for two
@@ -592,7 +586,6 @@ const (
 	unitsC                   = "units"
 	unitStatesC              = "unitstates"
 	upgradeInfoC             = "upgradeInfo"
-	userLastLoginC           = "userLastLogin"
 	usermodelnameC           = "usermodelname"
 	usersC                   = "users"
 	volumeAttachmentsC       = "volumeattachments"

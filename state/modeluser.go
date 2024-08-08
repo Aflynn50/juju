@@ -18,18 +18,6 @@ import (
 	"github.com/juju/juju/internal/mongo"
 )
 
-// modelUserLastConnectionDoc is updated by the apiserver whenever the user
-// connects over the API. This update is not done using mgo.txn so the values
-// could well change underneath a normal transaction and as such, it should
-// NEVER appear in any transaction asserts. It is really informational only as
-// far as everyone except the api server is concerned.
-type modelUserLastConnectionDoc struct {
-	ID             string    `bson:"_id"`
-	ModelUUID      string    `bson:"model-uuid"`
-	UserName       string    `bson:"user"`
-	LastConnection time.Time `bson:"last-connection"`
-}
-
 // setModelAccess changes the user's access permissions on the model.
 func (st *State) setModelAccess(access permission.Access, userGlobalKey, modelUUID string) error {
 	if err := permission.ValidateModelAccess(access); err != nil {
@@ -40,51 +28,6 @@ func (st *State) setModelAccess(access permission.Access, userGlobalKey, modelUU
 	if err == txn.ErrAborted {
 		return errors.NotFoundf("existing permissions")
 	}
-	return errors.Trace(err)
-}
-
-// LastModelConnection returns when this User last connected through the API
-// in UTC. The resulting time will be nil if the user has never logged in.
-func (m *Model) LastModelConnection(user names.UserTag) (time.Time, error) {
-	lastConnections, closer := m.st.db().GetRawCollection(modelUserLastConnectionC)
-	defer closer()
-
-	username := user.Id()
-	var lastConn modelUserLastConnectionDoc
-	err := lastConnections.FindId(m.st.docID(username)).Select(bson.D{{"last-connection", 1}}).One(&lastConn)
-	if err != nil {
-		if err == mgo.ErrNotFound {
-			err = errors.Wrap(err, newNeverConnectedError(username))
-		}
-		return time.Time{}, errors.Trace(err)
-	}
-
-	return lastConn.LastConnection.UTC(), nil
-}
-
-// UpdateLastModelConnection updates the last connection time of the model user.
-func (m *Model) UpdateLastModelConnection(user names.UserTag) error {
-	return m.updateLastModelConnection(user, m.st.nowToTheSecond())
-}
-
-func (m *Model) updateLastModelConnection(user names.UserTag, when time.Time) error {
-	lastConnections, closer := m.st.db().GetCollection(modelUserLastConnectionC)
-	defer closer()
-
-	lastConnectionsW := lastConnections.Writeable()
-
-	// Update the safe mode of the underlying session to not require
-	// write majority, nor sync to disk.
-	session := lastConnectionsW.Underlying().Database.Session
-	session.SetSafe(&mgo.Safe{})
-
-	lastConn := modelUserLastConnectionDoc{
-		ID:             m.st.docID(strings.ToLower(user.Id())),
-		ModelUUID:      m.UUID(),
-		UserName:       user.Id(),
-		LastConnection: when,
-	}
-	_, err := lastConnectionsW.UpsertId(lastConn.ID, lastConn)
 	return errors.Trace(err)
 }
 
@@ -166,42 +109,6 @@ func (st *State) removeModelUser(user names.UserTag) error {
 	return nil
 }
 
-func (st *State) ModelSummariesForUser(user names.UserTag, isSuperuser bool) ([]ModelSummary, error) {
-	modelQuery, closer, err := st.modelQueryForUser(user, isSuperuser)
-	if err != nil {
-		return nil, errors.Trace(err)
-	}
-	defer closer()
-	var modelDocs []modelDoc
-	if err := modelQuery.All(&modelDocs); err != nil {
-		return nil, errors.Trace(err)
-	}
-	p := newProcessorFromModelDocs(st, modelDocs, user, isSuperuser)
-	modelDocs = nil
-	if err := p.fillInFromConfig(); err != nil {
-		return nil, errors.Trace(err)
-	}
-	if err := p.fillInFromStatus(); err != nil {
-		return nil, errors.Trace(err)
-	}
-	if err := p.fillInJustUser(); err != nil {
-		return nil, errors.Trace(err)
-	}
-	if err := p.fillInLastAccess(); err != nil {
-		return nil, errors.Trace(err)
-	}
-	if err := p.fillInMachineSummary(); err != nil {
-		return nil, errors.Trace(err)
-	}
-	if err := p.fillInApplicationSummary(); err != nil {
-		return nil, errors.Trace(err)
-	}
-	if err := p.fillInMigration(); err != nil {
-		return nil, errors.Trace(err)
-	}
-	return p.summaries, nil
-}
-
 // modelsForUser gives you the information about all models that a user has access to.
 // This includes the name and UUID, as well as the last time the user connected to that model.
 func (st *State) modelQueryForUser(user names.UserTag, isSuperuser bool) (mongo.Query, SessionCloser, error) {
@@ -245,103 +152,6 @@ type ModelAccessInfo struct {
 	Owner          string    `bson:"owner"`
 	Type           ModelType `bson:"type"`
 	LastConnection time.Time
-}
-
-// ModelBasicInfoForUser gives you the information about all models that a user has access to.
-// This includes the name and UUID, as well as the last time the user connected to that model.
-func (st *State) ModelBasicInfoForUser(user names.UserTag, isSuperuser bool) ([]ModelAccessInfo, error) {
-	modelQuery, closer1, err := st.modelQueryForUser(user, isSuperuser)
-	if err != nil {
-		return nil, errors.Trace(err)
-	}
-	defer closer1()
-	modelQuery.Select(bson.M{"_id": 1, "name": 1, "owner": 1, "type": 1})
-	var accessInfo []ModelAccessInfo
-	if err := modelQuery.All(&accessInfo); err != nil {
-		return nil, errors.Trace(err)
-	}
-	// Now we need to find the last-connection time for each model for this user
-	username := user.Id()
-	connDocIds := make([]string, len(accessInfo))
-	for i, acc := range accessInfo {
-		connDocIds[i] = acc.UUID + ":" + username
-	}
-	lastConnections, closer2 := st.db().GetRawCollection(modelUserLastConnectionC)
-	defer closer2()
-	query := lastConnections.Find(bson.M{"_id": bson.M{"$in": connDocIds}})
-	query.Select(bson.M{"last-connection": 1, "_id": 0, "model-uuid": 1})
-	query.Batch(100)
-	iter := query.Iter()
-	lastConns := make(map[string]time.Time, len(connDocIds))
-	var connInfo modelUserLastConnectionDoc
-	for iter.Next(&connInfo) {
-		lastConns[connInfo.ModelUUID] = connInfo.LastConnection
-	}
-	if err := iter.Close(); err != nil {
-		return nil, errors.Trace(err)
-	}
-	for i := range accessInfo {
-		uuid := accessInfo[i].UUID
-		accessInfo[i].LastConnection = lastConns[uuid]
-	}
-	return accessInfo, nil
-}
-
-// ModelUUIDsForUser returns a list of models that the user is able to
-// access.
-// Results are sorted by (name, owner).
-func (st *State) ModelUUIDsForUser(user names.UserTag) ([]string, error) {
-	// Consider the controller permissions overriding Model permission, for
-	// this case the only relevant one is superuser.
-	// The mgo query below wont work for superuser case because it needs at
-	// least one model user per model.
-	access, err := st.UserAccess(user, st.controllerTag)
-	if err != nil && !errors.Is(err, errors.NotFound) {
-		return nil, errors.Trace(err)
-	}
-
-	var modelUUIDs []string
-	if access.Access == permission.SuperuserAccess {
-		var err error
-		modelUUIDs, err = st.AllModelUUIDs()
-		if err != nil {
-			return nil, errors.Trace(err)
-		}
-	} else {
-		// Since there are no groups at this stage, the simplest way to get all
-		// the models that a particular user can see is to look through the
-		// model user collection. A raw collection is required to support
-		// queries across multiple models.
-		modelUsers, userCloser := st.db().GetRawCollection(modelUsersC)
-		defer userCloser()
-
-		var userSlice []userAccessDoc
-		err := modelUsers.Find(bson.D{{"user", user.Id()}}).Select(bson.D{{"object-uuid", 1}, {"_id", 1}}).All(&userSlice)
-		if err != nil {
-			return nil, err
-		}
-		for _, doc := range userSlice {
-			modelUUIDs = append(modelUUIDs, doc.ObjectUUID)
-		}
-	}
-
-	modelsColl, close := st.db().GetCollection(modelsC)
-	defer close()
-	query := modelsColl.Find(bson.M{
-		"_id":            bson.M{"$in": modelUUIDs},
-		"migration-mode": bson.M{"$ne": MigrationModeImporting},
-	}).Sort("name", "owner").Select(bson.M{"_id": 1})
-
-	var docs []bson.M
-	err = query.All(&docs)
-	if err != nil {
-		return nil, errors.Trace(err)
-	}
-	out := make([]string, len(docs))
-	for i, doc := range docs {
-		out[i] = doc["_id"].(string)
-	}
-	return out, nil
 }
 
 // IsControllerAdmin returns true if the user specified has Super User Access.
