@@ -975,6 +975,21 @@ FROM v_permission
 	c.Check(grantOn, gc.Equals, expectedGrantON)
 }
 
+func (s *stateSuite) TestGetIDForCloud(c *gc.C) {
+	st := NewState(s.TxnRunnerFactory())
+	expectedUUID := s.assertInsertCloud(c, st, testCloud)
+
+	uuid, err := st.GetIDForCloud(context.Background(), testCloud.Name)
+	c.Assert(err, jc.ErrorIsNil)
+	c.Check(uuid.String(), gc.Equals, expectedUUID)
+}
+
+func (s *stateSuite) TestGetIDForCloudNotFound(c *gc.C) {
+	st := NewState(s.TxnRunnerFactory())
+	_, err := st.GetIDForCloud(context.Background(), "non-existent-cloud")
+	c.Check(err, jc.ErrorIs, clouderrors.NotFound)
+}
+
 func (s *stateSuite) TestGetCloudForNonExistentID(c *gc.C) {
 	fakeID := cloudtesting.GenCloudID(c)
 	st := NewState(s.TxnRunnerFactory())

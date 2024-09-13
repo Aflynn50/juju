@@ -113,7 +113,7 @@ SELECT
     p.access_type,
     p.object_type
 FROM v_permission AS p
-INNER JOIN cloud ON p.grant_on = cloud.name
+INNER JOIN cloud ON p.grant_on = cloud.uuid
 WHERE p.object_type = 'cloud';
 
 -- All controller permissions, verifying the controller does exists.

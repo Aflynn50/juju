@@ -15,6 +15,7 @@ import (
 
 	cloud "github.com/juju/juju/cloud"
 	changestream "github.com/juju/juju/core/changestream"
+	cloud0 "github.com/juju/juju/core/cloud"
 	user "github.com/juju/juju/core/user"
 	watcher "github.com/juju/juju/core/watcher"
 	gomock "go.uber.org/mock/gomock"
@@ -154,6 +155,45 @@ func (c *MockStateDeleteCloudCall) Do(f func(context.Context, string) error) *Mo
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockStateDeleteCloudCall) DoAndReturn(f func(context.Context, string) error) *MockStateDeleteCloudCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetIDForCloud mocks base method.
+func (m *MockState) GetIDForCloud(arg0 context.Context, arg1 string) (cloud0.ID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetIDForCloud", arg0, arg1)
+	ret0, _ := ret[0].(cloud0.ID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetIDForCloud indicates an expected call of GetIDForCloud.
+func (mr *MockStateMockRecorder) GetIDForCloud(arg0, arg1 any) *MockStateGetIDForCloudCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIDForCloud", reflect.TypeOf((*MockState)(nil).GetIDForCloud), arg0, arg1)
+	return &MockStateGetIDForCloudCall{Call: call}
+}
+
+// MockStateGetIDForCloudCall wrap *gomock.Call
+type MockStateGetIDForCloudCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockStateGetIDForCloudCall) Return(arg0 cloud0.ID, arg1 error) *MockStateGetIDForCloudCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockStateGetIDForCloudCall) Do(f func(context.Context, string) (cloud0.ID, error)) *MockStateGetIDForCloudCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockStateGetIDForCloudCall) DoAndReturn(f func(context.Context, string) (cloud0.ID, error)) *MockStateGetIDForCloudCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

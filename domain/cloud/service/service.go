@@ -10,9 +10,9 @@ import (
 
 	"github.com/juju/juju/cloud"
 	"github.com/juju/juju/core/changestream"
+	corecloud "github.com/juju/juju/core/cloud"
 	"github.com/juju/juju/core/user"
 	"github.com/juju/juju/core/watcher"
-	"github.com/juju/juju/internal/uuid"
 )
 
 // WatcherFactory instances return a watcher for a specified credential UUID,
@@ -38,6 +38,11 @@ type State interface {
 
 	// ListClouds returns the clouds matching the optional filter.
 	ListClouds(context.Context) ([]cloud.Cloud, error)
+
+	// GetIDForCloud returns the cloud ID for the cloud with the given name.
+	// If no cloud is found for the given id then a [clouderrors.NotFound] error
+	// is returned.
+	GetIDForCloud(ctx context.Context, name string) (corecloud.ID, error)
 }
 
 // Service provides the API for working with clouds.
@@ -55,11 +60,11 @@ func NewService(st State) *Service {
 // CreateCloud creates the input cloud entity and provides Admin
 // permissions for the owner.
 func (s *Service) CreateCloud(ctx context.Context, owner user.Name, cloud cloud.Cloud) error {
-	credUUID, err := uuid.NewUUID()
+	cloudUUID, err := corecloud.NewID()
 	if err != nil {
 		return errors.Annotatef(err, "creating uuid for cloud %q", cloud.Name)
 	}
-	err = s.st.CreateCloud(ctx, owner, credUUID.String(), cloud)
+	err = s.st.CreateCloud(ctx, owner, cloudUUID.String(), cloud)
 	return errors.Annotatef(err, "creating cloud %q", cloud.Name)
 }
 
@@ -85,6 +90,14 @@ func (s *Service) ListAll(ctx context.Context) ([]cloud.Cloud, error) {
 func (s *Service) Cloud(ctx context.Context, name string) (*cloud.Cloud, error) {
 	cloud, err := s.st.Cloud(ctx, name)
 	return cloud, errors.Trace(err)
+}
+
+// GetIDForCloud returns the cloud ID for the cloud with the given name.
+// If no cloud is found for the given id then a [clouderrors.NotFound] error
+// is returned.
+func (s *Service) GetIDForCloud(ctx context.Context, name string) (corecloud.ID, error) {
+	uuid, err := s.st.GetIDForCloud(ctx, name)
+	return uuid, errors.Trace(err)
 }
 
 // WatchableService defines a service for interacting with the underlying state

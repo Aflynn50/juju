@@ -691,9 +691,9 @@ WHERE   uuid = $M.grant_on
 `
 	case corepermission.Cloud:
 		targetExists = `
-SELECT  name AS &M.found
+SELECT  uuid AS &M.found
 FROM    cloud
-WHERE   name = $M.grant_on
+WHERE   uuid = $M.grant_on
 `
 	case corepermission.Offer:
 		return nil

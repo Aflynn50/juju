@@ -141,6 +141,45 @@ func (st *State) Cloud(ctx context.Context, name string) (*cloud.Cloud, error) {
 	return result, errors.Trace(err)
 }
 
+// GetIDForCloud returns the cloud ID for the cloud with the given name.
+// If no cloud is found for the given id then a [clouderrors.NotFound] error is
+// returned.
+func (st *State) GetIDForCloud(ctx context.Context, name string) (corecloud.ID, error) {
+	db, err := st.DB()
+	if err != nil {
+		return "", errors.Trace(err)
+	}
+	id := cloudID{
+		Name: name,
+	}
+
+	q := `
+	SELECT uuid AS &cloudID.uuid
+    FROM cloud
+	WHERE name = $cloudID.name
+`
+
+	stmt, err := st.Prepare(q, id)
+	if err != nil {
+		return "", errors.Trace(err)
+	}
+
+	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+		err = tx.Query(ctx, stmt, id).Get(&id)
+		if errors.Is(err, sqlair.ErrNoRows) {
+			return fmt.Errorf("cloud %q: %w", name, clouderrors.NotFound)
+		} else if err != nil {
+			return fmt.Errorf("getting cloud %q: %w", name, err)
+		}
+		return nil
+	})
+	if err != nil {
+		return "", errors.Trace(err)
+	}
+
+	return corecloud.ID(id.UUID), nil
+}
+
 // GetCloudForID returns the cloud associated with the provided id. If no cloud is
 // found for the given id then a [clouderrors.NotFound] error is returned.
 func (st *State) GetCloudForID(ctx context.Context, id corecloud.ID) (cloud.Cloud, error) {

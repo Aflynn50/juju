@@ -12,6 +12,7 @@ import (
 	gc "gopkg.in/check.v1"
 
 	"github.com/juju/juju/cloud"
+	cloudtesting "github.com/juju/juju/core/cloud/testing"
 	usertesting "github.com/juju/juju/core/user/testing"
 	"github.com/juju/juju/core/watcher/watchertest"
 )
@@ -114,6 +115,16 @@ func (s *serviceSuite) TestCloudNotFound(c *gc.C) {
 	c.Assert(err, gc.ErrorMatches, `cloud "fluffy" not found`)
 	c.Check(err, jc.ErrorIs, errors.NotFound)
 	c.Check(result, gc.IsNil)
+}
+
+func (s *serviceSuite) TestGetCloudForID(c *gc.C) {
+	defer s.setupMocks(c).Finish()
+	uuid := cloudtesting.GenCloudID(c)
+	s.state.EXPECT().GetIDForCloud(gomock.Any(), "fluffy").Return(uuid, nil)
+
+	result, err := NewWatchableService(s.state, s.watcherFactory).GetIDForCloud(context.Background(), "fluffy")
+	c.Assert(err, jc.ErrorIsNil)
+	c.Check(result, jc.DeepEquals, uuid)
 }
 
 func (s *serviceSuite) TestWatchCloud(c *gc.C) {
