@@ -34,7 +34,6 @@ import (
 	"github.com/juju/juju/core/status"
 	"github.com/juju/juju/core/user"
 	coreusertesting "github.com/juju/juju/core/user/testing"
-	"github.com/juju/juju/core/watcher"
 	accesserrors "github.com/juju/juju/domain/access/errors"
 	modelerrors "github.com/juju/juju/domain/model/errors"
 	secretbackendservice "github.com/juju/juju/domain/secretbackend/service"
@@ -44,7 +43,6 @@ import (
 	"github.com/juju/juju/environs/envcontext"
 	coretesting "github.com/juju/juju/internal/testing"
 	"github.com/juju/juju/internal/uuid"
-	"github.com/juju/juju/juju/testing"
 	"github.com/juju/juju/rpc/params"
 	"github.com/juju/juju/state"
 )
@@ -58,6 +56,7 @@ type modelInfoSuite struct {
 	modelUserInfo            []coremodel.ModelUserInfo
 	mockSecretBackendService *mocks.MockSecretBackendService
 	controllerUUID           uuid.UUID
+	mockCloudService         *mocks.MockCloudService
 	mockAccessService        *mocks.MockAccessService
 	mockModelService         *mocks.MockModelService
 	mockApplicationService   *mocks.MockApplicationService
@@ -214,6 +213,7 @@ func (s *modelInfoSuite) getAPI(c *gc.C) (*modelmanager.ModelManagerAPI, *gomock
 	s.mockAccessService = mocks.NewMockAccessService(ctrl)
 	s.mockModelService = mocks.NewMockModelService(ctrl)
 	s.mockApplicationService = mocks.NewMockApplicationService(ctrl)
+	s.mockCloudService = mocks.NewMockCloudService(ctrl)
 	cred := cloud.NewEmptyCredential()
 	api, err := modelmanager.NewModelManagerAPI(
 		context.Background(),
@@ -221,9 +221,7 @@ func (s *modelInfoSuite) getAPI(c *gc.C) (*modelmanager.ModelManagerAPI, *gomock
 		s.controllerUUID,
 		modelmanager.Services{
 			ServiceFactoryGetter: nil,
-			CloudService: &mockCloudService{
-				clouds: map[string]cloud.Cloud{"dummy": testing.DefaultCloud},
-			},
+			CloudService:         s.mockCloudService,
 			CredentialService:    apiservertesting.ConstCredentialGetter(&cred),
 			ModelService:         s.mockModelService,
 			ModelDefaultsService: nil,
@@ -251,6 +249,7 @@ func (s *modelInfoSuite) getAPIWithUser(c *gc.C, user names.UserTag) (*modelmana
 	s.mockAccessService = mocks.NewMockAccessService(ctrl)
 	s.mockModelService = mocks.NewMockModelService(ctrl)
 	s.mockApplicationService = mocks.NewMockApplicationService(ctrl)
+	s.mockCloudService = mocks.NewMockCloudService(ctrl)
 	s.authorizer.Tag = user
 	cred := cloud.NewEmptyCredential()
 	api, err := modelmanager.NewModelManagerAPI(
@@ -259,9 +258,7 @@ func (s *modelInfoSuite) getAPIWithUser(c *gc.C, user names.UserTag) (*modelmana
 		s.controllerUUID,
 		modelmanager.Services{
 			ServiceFactoryGetter: nil,
-			CloudService: &mockCloudService{
-				clouds: map[string]cloud.Cloud{"dummy": testing.DefaultCloud},
-			},
+			CloudService:         s.mockCloudService,
 			CredentialService:    apiservertesting.ConstCredentialGetter(&cred),
 			ModelService:         s.mockModelService,
 			ModelDefaultsService: nil,
@@ -1340,30 +1337,6 @@ func (m *mockMigration) StartTime() time.Time {
 
 func (m *mockMigration) EndTime() time.Time {
 	return m.end
-}
-
-type mockCloudService struct {
-	clouds map[string]cloud.Cloud
-}
-
-func (m *mockCloudService) WatchCloud(ctx context.Context, name string) (watcher.NotifyWatcher, error) {
-	return nil, errors.NotSupported
-}
-
-func (m *mockCloudService) Cloud(ctx context.Context, name string) (*cloud.Cloud, error) {
-	cld, ok := m.clouds[name]
-	if !ok {
-		return nil, errors.NotFoundf("cloud %q", name)
-	}
-	return &cld, nil
-}
-
-func (m *mockCloudService) ListAll(ctx context.Context) ([]cloud.Cloud, error) {
-	var result []cloud.Cloud
-	for _, cld := range m.clouds {
-		result = append(result, cld)
-	}
-	return result, nil
 }
 
 type mockCredentialShim struct {

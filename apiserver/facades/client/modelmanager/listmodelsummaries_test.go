@@ -34,7 +34,6 @@ import (
 	"github.com/juju/juju/internal/testing"
 	coretesting "github.com/juju/juju/internal/testing"
 	"github.com/juju/juju/internal/uuid"
-	jtesting "github.com/juju/juju/juju/testing"
 	"github.com/juju/juju/rpc/params"
 	"github.com/juju/juju/state"
 )
@@ -47,6 +46,7 @@ type ListModelsWithInfoSuite struct {
 
 	authoriser        apiservertesting.FakeAuthorizer
 	adminUser         names.UserTag
+	mockCloudService  *mocks.MockCloudService
 	mockAccessService *mocks.MockAccessService
 	mockModelService  *mocks.MockModelService
 
@@ -82,9 +82,7 @@ func (s *ListModelsWithInfoSuite) SetUpTest(c *gc.C) {
 		s.controllerUUID,
 		modelmanager.Services{
 			ServiceFactoryGetter: nil,
-			CloudService: &mockCloudService{
-				clouds: map[string]cloud.Cloud{"dummy": jtesting.DefaultCloud},
-			},
+			CloudService:         s.mockCloudService,
 			CredentialService:    apiservertesting.ConstCredentialGetter(&s.cred),
 			ModelService:         s.mockModelService,
 			ModelDefaultsService: nil,
@@ -103,15 +101,14 @@ func (s *ListModelsWithInfoSuite) setupMocks(c *gc.C) *gomock.Controller {
 	ctrl := gomock.NewController(c)
 	s.mockAccessService = mocks.NewMockAccessService(ctrl)
 	s.mockModelService = mocks.NewMockModelService(ctrl)
+	s.mockCloudService = mocks.NewMockCloudService(ctrl)
 	api, err := modelmanager.NewModelManagerAPI(
 		stdcontext.Background(),
 		s.st, nil, &mockState{},
 		s.controllerUUID,
 		modelmanager.Services{
 			ServiceFactoryGetter: nil,
-			CloudService: &mockCloudService{
-				clouds: map[string]cloud.Cloud{"dummy": jtesting.DefaultCloud},
-			},
+			CloudService:         s.mockCloudService,
 			CredentialService:    apiservertesting.ConstCredentialGetter(&s.cred),
 			ModelService:         s.mockModelService,
 			ModelDefaultsService: nil,
@@ -147,9 +144,7 @@ func (s *ListModelsWithInfoSuite) setAPIUser(c *gc.C, user names.UserTag) {
 		s.controllerUUID,
 		modelmanager.Services{
 			ServiceFactoryGetter: nil,
-			CloudService: &mockCloudService{
-				clouds: map[string]cloud.Cloud{"dummy": jtesting.DefaultCloud},
-			},
+			CloudService:         s.mockCloudService,
 			CredentialService:    apiservertesting.ConstCredentialGetter(&s.cred),
 			ModelService:         s.mockModelService,
 			ModelDefaultsService: nil,

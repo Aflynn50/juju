@@ -21,6 +21,7 @@ import (
 	apiservertesting "github.com/juju/juju/apiserver/testing"
 	k8sconstants "github.com/juju/juju/caas/kubernetes/provider/constants"
 	jujucloud "github.com/juju/juju/cloud"
+	cloudtesting "github.com/juju/juju/core/cloud/testing"
 	"github.com/juju/juju/core/credential"
 	"github.com/juju/juju/core/permission"
 	"github.com/juju/juju/core/user"
@@ -116,12 +117,16 @@ func (s *cloudSuite) TestClouds(c *gc.C) {
 
 	cloudPermissionService := s.cloudAccessService.EXPECT()
 
+	myCloudUUID := cloudtesting.GenCloudID(c)
+	yourCloudUUID := cloudtesting.GenCloudID(c)
 	cloudPermissionService.ReadUserAccessLevelForTarget(gomock.Any(),
-		user.NameFromTag(bruce), permission.ID{ObjectType: permission.Cloud, Key: "my-cloud"}).Return(permission.AddModelAccess, nil)
+		user.NameFromTag(bruce), permission.ID{ObjectType: permission.Cloud, Key: myCloudUUID.String()}).Return(permission.AddModelAccess, nil)
 	cloudPermissionService.ReadUserAccessLevelForTarget(gomock.Any(),
-		user.NameFromTag(bruce), permission.ID{ObjectType: permission.Cloud, Key: "your-cloud"}).Return(permission.NoAccess, nil)
+		user.NameFromTag(bruce), permission.ID{ObjectType: permission.Cloud, Key: yourCloudUUID.String()}).Return(permission.NoAccess, nil)
 
 	backend := s.cloudService.EXPECT()
+	backend.GetIDForCloud(gomock.Any(), "my-cloud").Return(myCloudUUID, nil)
+	backend.GetIDForCloud(gomock.Any(), "your-cloud").Return(yourCloudUUID, nil)
 	backend.ListAll(gomock.Any()).Return([]jujucloud.Cloud{
 		{
 			Name:      "my-cloud",
@@ -151,6 +156,7 @@ func (s *cloudSuite) TestCloudInfoAdmin(c *gc.C) {
 	ctrl := s.setup(c, names.NewUserTag("admin"))
 	defer ctrl.Finish()
 
+	cloudUUID := cloudtesting.GenCloudID(c)
 	cloudPermissionService := s.cloudAccessService.EXPECT()
 	userPerm := []permission.UserAccess{
 		{UserName: usertesting.GenNewName(c, "fred"), DisplayName: "display-fred", Access: permission.AddModelAccess},
@@ -158,12 +164,13 @@ func (s *cloudSuite) TestCloudInfoAdmin(c *gc.C) {
 	}
 	target := permission.ID{
 		ObjectType: permission.Cloud,
-		Key:        "my-cloud",
+		Key:        cloudUUID.String(),
 	}
 	cloudPermissionService.ReadAllUserAccessForTarget(gomock.Any(), target).Return(userPerm,
 		nil)
 
 	cloudService := s.cloudService.EXPECT()
+	cloudService.GetIDForCloud(gomock.Any(), "my-cloud").Return(cloudUUID, nil)
 	cloudService.Cloud(gomock.Any(), "my-cloud").Return(&jujucloud.Cloud{
 		Name:      "dummy",
 		Type:      "dummy",
@@ -205,10 +212,11 @@ func (s *cloudSuite) TestCloudInfoNonAdmin(c *gc.C) {
 	ctrl := s.setup(c, fredTag)
 	defer ctrl.Finish()
 
+	cloudUUID := cloudtesting.GenCloudID(c)
 	cloudPermissionService := s.cloudAccessService.EXPECT()
 	permID := permission.ID{
 		ObjectType: permission.Cloud,
-		Key:        "my-cloud",
+		Key:        cloudUUID.String(),
 	}
 	cloudPermissionService.ReadUserAccessLevelForTarget(gomock.Any(), user.NameFromTag(fredTag),
 		permID).Return(permission.AddModelAccess, nil)
@@ -219,6 +227,7 @@ func (s *cloudSuite) TestCloudInfoNonAdmin(c *gc.C) {
 	cloudPermissionService.ReadAllUserAccessForTarget(gomock.Any(), permID).Return(userPerm,
 		nil)
 
+	s.cloudService.EXPECT().GetIDForCloud(gomock.Any(), "my-cloud").Return(cloudUUID, nil)
 	s.cloudService.EXPECT().Cloud(gomock.Any(), "my-cloud").Return(&jujucloud.Cloud{
 		Name:      "dummy",
 		Type:      "dummy",
@@ -878,12 +887,14 @@ func (s *cloudSuite) TestModifyCloudAccess(c *gc.C) {
 	adminTag := names.NewUserTag("admin")
 	defer s.setup(c, adminTag).Finish()
 
+	cloudUUID := cloudtesting.GenCloudID(c)
+	s.cloudService.EXPECT().GetIDForCloud(gomock.Any(), "fluffy").Return(cloudUUID, nil).Times(2)
 	cloudPermissionService := s.cloudAccessService.EXPECT()
 	fredSpec := access.UpdatePermissionArgs{
 		AccessSpec: permission.AccessSpec{
 			Target: permission.ID{
 				ObjectType: permission.Cloud,
-				Key:        "fluffy",
+				Key:        cloudUUID.String(),
 			},
 			Access: permission.AddModelAccess,
 		},
@@ -895,7 +906,7 @@ func (s *cloudSuite) TestModifyCloudAccess(c *gc.C) {
 		AccessSpec: permission.AccessSpec{
 			Target: permission.ID{
 				ObjectType: permission.Cloud,
-				Key:        "fluffy",
+				Key:        cloudUUID.String(),
 			},
 			Access: permission.AddModelAccess,
 		},

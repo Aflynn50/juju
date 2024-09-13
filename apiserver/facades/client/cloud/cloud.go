@@ -21,6 +21,7 @@ import (
 	"github.com/juju/juju/core/user"
 	"github.com/juju/juju/domain/access"
 	accesserrors "github.com/juju/juju/domain/access/errors"
+	clouderrors "github.com/juju/juju/domain/cloud/errors"
 	"github.com/juju/juju/domain/credential/service"
 	"github.com/juju/juju/environs"
 	"github.com/juju/juju/rpc/params"
@@ -108,7 +109,11 @@ func NewCloudAPI(
 }
 
 func (api *CloudAPI) canAccessCloud(ctx context.Context, cloud string, user user.Name, access permission.Access) (bool, error) {
-	id := permission.ID{ObjectType: permission.Cloud, Key: cloud}
+	uuid, err := api.cloudService.GetIDForCloud(ctx, cloud)
+	if errors.Is(err, clouderrors.NotFound) {
+		return false, nil
+	}
+	id := permission.ID{ObjectType: permission.Cloud, Key: uuid.String()}
 	perm, err := api.cloudAccessService.ReadUserAccessLevelForTarget(ctx, user, id)
 	if errors.Is(err, errors.NotFound) {
 		return false, nil
@@ -244,7 +249,12 @@ func (api *CloudAPI) getCloudInfo(ctx context.Context, tag names.CloudTag) (*par
 		CloudDetails: cloudDetailsToParams(*aCloud),
 	}
 
-	cloudUsers, err := api.cloudAccessService.ReadAllUserAccessForTarget(ctx, permission.ID{Key: tag.Id(), ObjectType: permission.Cloud})
+	uuid, err := api.cloudService.GetIDForCloud(ctx, tag.Id())
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+	id := permission.ID{ObjectType: permission.Cloud, Key: uuid.String()}
+	cloudUsers, err := api.cloudAccessService.ReadAllUserAccessForTarget(ctx, id)
 	if err != nil {
 		return nil, errors.Trace(err)
 	}
@@ -812,11 +822,16 @@ func (api *CloudAPI) ModifyCloudAccess(ctx context.Context, args params.ModifyCl
 			result.Results[i].Error = apiservererrors.ServerError(err)
 			continue
 		}
+		uuid, err := api.cloudService.GetIDForCloud(ctx, cloudTag.Id())
+		if err != nil {
+			result.Results[i].Error = apiservererrors.ServerError(err)
+			continue
+		}
 		updateArgs := access.UpdatePermissionArgs{
 			AccessSpec: permission.AccessSpec{
 				Target: permission.ID{
 					ObjectType: permission.Cloud,
-					Key:        cloudTag.Id(),
+					Key:        uuid.String(),
 				},
 				Access: permission.Access(arg.Access),
 			},

@@ -14,6 +14,7 @@ import (
 	reflect "reflect"
 
 	cloud "github.com/juju/juju/cloud"
+	cloud0 "github.com/juju/juju/core/cloud"
 	credential "github.com/juju/juju/core/credential"
 	permission "github.com/juju/juju/core/permission"
 	user "github.com/juju/juju/core/user"
@@ -489,6 +490,45 @@ func (c *MockCloudServiceDeleteCloudCall) Do(f func(context.Context, string) err
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
 func (c *MockCloudServiceDeleteCloudCall) DoAndReturn(f func(context.Context, string) error) *MockCloudServiceDeleteCloudCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
+// GetIDForCloud mocks base method.
+func (m *MockCloudService) GetIDForCloud(arg0 context.Context, arg1 string) (cloud0.ID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetIDForCloud", arg0, arg1)
+	ret0, _ := ret[0].(cloud0.ID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetIDForCloud indicates an expected call of GetIDForCloud.
+func (mr *MockCloudServiceMockRecorder) GetIDForCloud(arg0, arg1 any) *MockCloudServiceGetIDForCloudCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetIDForCloud", reflect.TypeOf((*MockCloudService)(nil).GetIDForCloud), arg0, arg1)
+	return &MockCloudServiceGetIDForCloudCall{Call: call}
+}
+
+// MockCloudServiceGetIDForCloudCall wrap *gomock.Call
+type MockCloudServiceGetIDForCloudCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockCloudServiceGetIDForCloudCall) Return(arg0 cloud0.ID, arg1 error) *MockCloudServiceGetIDForCloudCall {
+	c.Call = c.Call.Return(arg0, arg1)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockCloudServiceGetIDForCloudCall) Do(f func(context.Context, string) (cloud0.ID, error)) *MockCloudServiceGetIDForCloudCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockCloudServiceGetIDForCloudCall) DoAndReturn(f func(context.Context, string) (cloud0.ID, error)) *MockCloudServiceGetIDForCloudCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }

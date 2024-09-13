@@ -29,6 +29,7 @@ import (
 	"github.com/juju/juju/core/user"
 	"github.com/juju/juju/domain/access"
 	accesserrors "github.com/juju/juju/domain/access/errors"
+	clouderrors "github.com/juju/juju/domain/cloud/errors"
 	"github.com/juju/juju/domain/model"
 	modelerrors "github.com/juju/juju/domain/model/errors"
 	"github.com/juju/juju/environs"
@@ -229,9 +230,15 @@ func (m *ModelManagerAPI) newModelConfig(
 }
 
 func (m *ModelManagerAPI) checkAddModelPermission(ctx context.Context, cloud string, userTag names.UserTag) (bool, error) {
+	uuid, err := m.cloudService.GetIDForCloud(ctx, cloud)
+	if errors.Is(err, clouderrors.NotFound) {
+		return false, nil
+	} else if err != nil {
+		return false, errors.Trace(err)
+	}
 	target := permission.ID{
 		ObjectType: permission.Cloud,
-		Key:        cloud,
+		Key:        uuid.String(),
 	}
 	perm, err := m.accessService.ReadUserAccessLevelForTarget(ctx, user.NameFromTag(userTag), target)
 	if err != nil && !errors.Is(err, accesserrors.AccessNotFound) {

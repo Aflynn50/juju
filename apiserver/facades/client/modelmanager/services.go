@@ -13,6 +13,7 @@ import (
 	"github.com/juju/juju/apiserver/facade"
 	jujucloud "github.com/juju/juju/cloud"
 	"github.com/juju/juju/core/assumes"
+	corecloud "github.com/juju/juju/core/cloud"
 	"github.com/juju/juju/core/credential"
 	coremodel "github.com/juju/juju/core/model"
 	"github.com/juju/juju/core/objectstore"
@@ -129,6 +130,10 @@ type CloudService interface {
 	common.CloudService
 	// ListAll return all clouds.
 	ListAll(ctx context.Context) ([]jujucloud.Cloud, error)
+	// GetIDForCloud returns the cloud ID for the cloud with the given name.
+	// If no cloud is found for the given id then a [clouderrors.NotFound] error
+	// is returned.
+	GetIDForCloud(ctx context.Context, name string) (corecloud.ID, error)
 }
 
 // CredentialService exposes State methods needed by credential manager.

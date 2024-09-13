@@ -7,6 +7,7 @@ import (
 	stdcontext "context"
 
 	"github.com/juju/juju/cloud"
+	corecloud "github.com/juju/juju/core/cloud"
 	"github.com/juju/juju/core/credential"
 	corepermission "github.com/juju/juju/core/permission"
 	"github.com/juju/juju/core/user"
@@ -28,6 +29,10 @@ type CloudService interface {
 	UpdateCloud(ctx stdcontext.Context, cld cloud.Cloud) error
 	// DeleteCloud removes a cloud, and any permissions associated with it.
 	DeleteCloud(ctx stdcontext.Context, name string) error
+	// GetIDForCloud returns the cloud ID for the cloud with the given name.
+	// If no cloud is found for the given id then a [clouderrors.NotFound] error
+	// is returned.
+	GetIDForCloud(ctx stdcontext.Context, name string) (corecloud.ID, error)
 }
 
 // CloudAccessService provides access to cloud permissions.

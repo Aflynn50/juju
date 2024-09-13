@@ -24,6 +24,7 @@ import (
 	"github.com/juju/juju/caas"
 	"github.com/juju/juju/cloud"
 	"github.com/juju/juju/core/assumes"
+	cloudtesting "github.com/juju/juju/core/cloud/testing"
 	"github.com/juju/juju/core/credential"
 	"github.com/juju/juju/core/migration"
 	coremodel "github.com/juju/juju/core/model"
@@ -71,7 +72,7 @@ type modelManagerSuite struct {
 	ctlrSt               *mockState
 	caasSt               *mockState
 	caasBroker           *mockCaasBroker
-	cloudService         *mockCloudService
+	cloudService         *mocks.MockCloudService
 	accessService        *mocks.MockAccessService
 	modelService         *mocks.MockModelService
 	modelExporter        *mocks.MockModelExporter
@@ -81,6 +82,9 @@ type modelManagerSuite struct {
 	api                  *modelmanager.ModelManagerAPI
 	caasApi              *modelmanager.ModelManagerAPI
 	controllerUUID       uuid.UUID
+
+	dummyCloud   cloud.Cloud
+	mockK8sCloud cloud.Cloud
 }
 
 var _ = gc.Suite(&modelManagerSuite{})
@@ -93,6 +97,7 @@ func (s *modelManagerSuite) setUpMocks(c *gc.C) *gomock.Controller {
 	s.accessService = mocks.NewMockAccessService(ctrl)
 	s.serviceFactoryGetter = mocks.NewMockServiceFactoryGetter(ctrl)
 	s.applicationService = mocks.NewMockApplicationService(ctrl)
+	s.cloudService = mocks.NewMockCloudService(ctrl)
 	return ctrl
 }
 
@@ -202,7 +207,7 @@ func (s *modelManagerSuite) SetUpTest(c *gc.C) {
 }
 
 func (s *modelManagerSuite) setUpAPI(c *gc.C) {
-	dummyCloud := cloud.Cloud{
+	s.dummyCloud = cloud.Cloud{
 		Name:      "dummy",
 		Type:      "dummy",
 		AuthTypes: []cloud.AuthType{cloud.EmptyAuthType},
@@ -212,7 +217,7 @@ func (s *modelManagerSuite) setUpAPI(c *gc.C) {
 		},
 	}
 
-	mockK8sCloud := cloud.Cloud{
+	s.mockK8sCloud = cloud.Cloud{
 		Name:      "k8s-cloud",
 		Type:      "kubernetes",
 		AuthTypes: []cloud.AuthType{cloud.UserPassAuthType},
@@ -223,11 +228,6 @@ func (s *modelManagerSuite) setUpAPI(c *gc.C) {
 		return s.caasBroker, nil
 	}
 
-	s.cloudService = &mockCloudService{
-		clouds: map[string]cloud.Cloud{
-			"dummy": dummyCloud,
-		},
-	}
 	cred := cloud.NewEmptyCredential()
 	api, err := modelmanager.NewModelManagerAPI(
 		context.Background(),
@@ -256,11 +256,7 @@ func (s *modelManagerSuite) setUpAPI(c *gc.C) {
 		s.controllerUUID,
 		modelmanager.Services{
 			ServiceFactoryGetter: s.serviceFactoryGetter,
-			CloudService: &mockCloudService{
-				clouds: map[string]cloud.Cloud{
-					"k8s-cloud": mockK8sCloud,
-				},
-			},
+			CloudService:         s.cloudService,
 			CredentialService:    apiservertesting.ConstCredentialGetter(&caasCred),
 			ModelService:         s.modelService,
 			ModelDefaultsService: nil,
@@ -292,9 +288,7 @@ func (s *modelManagerSuite) setAPIUser(c *gc.C, user names.UserTag) {
 		s.controllerUUID,
 		modelmanager.Services{
 			ServiceFactoryGetter: s.serviceFactoryGetter,
-			CloudService: &mockCloudService{
-				clouds: map[string]cloud.Cloud{"dummy": jujutesting.DefaultCloud},
-			},
+			CloudService:         s.cloudService,
 			CredentialService:    apiservertesting.ConstCredentialGetter(nil),
 			ModelService:         s.modelService,
 			ModelDefaultsService: nil,
@@ -317,7 +311,7 @@ func (s *modelManagerSuite) expectCreateModel(
 	ctrl *gomock.Controller,
 	modelCreateArgs params.ModelCreateArgs,
 	expectedCloudCredential credential.Key,
-	expectedCloudName string,
+	expectedCloud cloud.Cloud,
 	expectedCloudRegion string,
 ) coremodel.UUID {
 	modelUUID := modeltesting.GenModelUUID(c)
@@ -326,9 +320,12 @@ func (s *modelManagerSuite) expectCreateModel(
 	ownerName := user.NameFromTag(userTag)
 	ownerUUID := usertesting.GenUserUUID(c)
 
+	// Get the dummy cloud.
+	s.cloudService.EXPECT().Cloud(context.Background(), expectedCloud.Name).Return(&expectedCloud, nil)
+
 	// Get the default cloud name and credential.
 	s.modelService.EXPECT().DefaultModelCloudNameAndCredential(
-		gomock.Any()).Return("dummy", credential.Key{}, nil)
+		gomock.Any()).Return(expectedCloud.Name, credential.Key{}, nil)
 	// Get the uuid of the model owner.
 	s.accessService.EXPECT().GetUserByName(
 		gomock.Any(), ownerName,
@@ -338,7 +335,7 @@ func (s *modelManagerSuite) expectCreateModel(
 	s.modelService.EXPECT().CreateModel(gomock.Any(), model.ModelCreationArgs{
 		Name:        modelCreateArgs.Name,
 		Owner:       ownerUUID,
-		Cloud:       expectedCloudName,
+		Cloud:       expectedCloud.Name,
 		CloudRegion: expectedCloudRegion,
 		Credential:  expectedCloudCredential,
 	}).Return(
@@ -416,7 +413,7 @@ func (s *modelManagerSuite) TestCreateModelArgs(c *gc.C) {
 		CloudRegion:        "qux",
 		CloudCredentialTag: "cloudcred-dummy_admin_some-credential",
 	}
-	modelUUID := s.expectCreateModel(c, ctrl, args, cloudCredental, "dummy", "qux")
+	modelUUID := s.expectCreateModel(c, ctrl, args, cloudCredental, s.dummyCloud, "qux")
 
 	_, err := s.api.CreateModel(stdcontext.Background(), args)
 	c.Assert(err, jc.ErrorIsNil)
@@ -488,7 +485,7 @@ func (s *modelManagerSuite) TestCreateModelArgsWithCloud(c *gc.C) {
 		CloudRegion:        "qux",
 		CloudCredentialTag: "cloudcred-dummy_admin_some-credential",
 	}
-	s.expectCreateModel(c, ctrl, args, cloudCredental, "dummy", "qux")
+	s.expectCreateModel(c, ctrl, args, cloudCredental, s.dummyCloud, "qux")
 	_, err := s.api.CreateModel(stdcontext.Background(), args)
 	c.Assert(err, jc.ErrorIsNil)
 
@@ -515,7 +512,7 @@ func (s *modelManagerSuite) TestCreateModelDefaultRegion(c *gc.C) {
 		Name:     "foo",
 		OwnerTag: "user-admin",
 	}
-	s.expectCreateModel(c, ctrl, args, credential.Key{}, "dummy", "dummy-region")
+	s.expectCreateModel(c, ctrl, args, credential.Key{}, s.dummyCloud, "dummy-region")
 	_, err := s.api.CreateModel(stdcontext.Background(), args)
 	c.Assert(err, jc.ErrorIsNil)
 
@@ -531,7 +528,7 @@ func (s *modelManagerSuite) TestCreateModelDefaultCredentialAdmin(c *gc.C) {
 		Name:     "foo",
 		OwnerTag: "user-admin",
 	}
-	s.expectCreateModel(c, ctrl, args, credential.Key{}, "dummy", "dummy-region")
+	s.expectCreateModel(c, ctrl, args, credential.Key{}, s.dummyCloud, "dummy-region")
 	_, err := s.api.CreateModel(stdcontext.Background(), args)
 	c.Assert(err, jc.ErrorIsNil)
 
@@ -549,6 +546,7 @@ func (s *modelManagerSuite) TestCreateModelEmptyCredentialNonAdmin(c *gc.C) {
 	bobUUID := usertesting.GenUserUUID(c)
 	modelUUID := modeltesting.GenModelUUID(c)
 
+	s.cloudService.EXPECT().Cloud(gomock.Any(), s.dummyCloud.Name).Return(&s.dummyCloud, nil)
 	s.modelService.EXPECT().DefaultModelCloudNameAndCredential(
 		gomock.Any()).Return("dummy", credential.Key{}, nil)
 	s.accessService.EXPECT().GetUserByName(
@@ -581,9 +579,7 @@ func (s *modelManagerSuite) TestCreateModelEmptyCredentialNonAdmin(c *gc.C) {
 
 func (s *modelManagerSuite) TestCreateModelNoDefaultCredentialNonAdmin(c *gc.C) {
 	s.setUpAPI(c)
-	cld := s.cloudService.clouds["dummy"]
-	cld.AuthTypes = nil
-	s.cloudService.clouds["dummy"] = cld
+	//s.cloudService.EXPECT().Cloud()
 	args := params.ModelCreateArgs{
 		Name:     "foo",
 		OwnerTag: "user-bob",
@@ -608,7 +604,7 @@ func (s *modelManagerSuite) TestCreateCAASModelArgs(c *gc.C) {
 		CloudTag:           "cloud-k8s-cloud",
 		CloudCredentialTag: "cloudcred-k8s-cloud_admin_some-credential",
 	}
-	s.expectCreateModel(c, ctrl, args, cloudCredental, "k8s-cloud", "")
+	s.expectCreateModel(c, ctrl, args, cloudCredental, s.mockK8sCloud, "")
 	_, err := s.caasApi.CreateModel(stdcontext.Background(), args)
 	c.Assert(err, jc.ErrorIsNil)
 	s.caasSt.CheckCallNames(c,
@@ -682,6 +678,8 @@ func (s *modelManagerSuite) TestCreateCAASModelNamespaceClash(c *gc.C) {
 	c.Assert(err, gc.IsNil)
 	ownerName := user.NameFromTag(userTag)
 	ownerUUID := usertesting.GenUserUUID(c)
+
+	s.cloudService.EXPECT().Cloud(gomock.Any(), s.mockK8sCloud.Name).Return(&s.mockK8sCloud, nil)
 	s.modelService.EXPECT().DefaultModelCloudNameAndCredential(
 		gomock.Any()).Return("dummy", credential.Key{}, nil)
 	s.accessService.EXPECT().GetUserByName(
@@ -900,9 +898,7 @@ func (s *modelManagerSuite) TestDumpModel(c *gc.C) {
 		s.controllerUUID,
 		modelmanager.Services{
 			ServiceFactoryGetter: s.serviceFactoryGetter,
-			CloudService: &mockCloudService{
-				clouds: map[string]cloud.Cloud{"dummy": jujutesting.DefaultCloud},
-			},
+			CloudService:         s.cloudService,
 			CredentialService:    apiservertesting.ConstCredentialGetter(nil),
 			ModelService:         s.modelService,
 			ModelDefaultsService: nil,
@@ -1047,8 +1043,13 @@ func (s *modelManagerSuite) TestAddModelCanCreateModel(c *gc.C) {
 	addModelUserName := user.NameFromTag(addModelUser)
 	args := createArgs(addModelUser)
 
+	// Get the dummy cloud.
+	s.cloudService.EXPECT().Cloud(context.Background(), "dummy").Return(&s.dummyCloud, nil)
+
+	cloudUUID := cloudtesting.GenCloudID(c)
+	s.cloudService.EXPECT().GetIDForCloud(gomock.Any(), "dummy").Return(cloudUUID, nil).Times(2)
 	s.accessService.EXPECT().ReadUserAccessLevelForTarget(
-		gomock.Any(), addModelUserName, permission.ID{ObjectType: permission.Cloud, Key: "dummy"},
+		gomock.Any(), addModelUserName, permission.ID{ObjectType: permission.Cloud, Key: cloudUUID.String()},
 	).Return(permission.AddModelAccess, nil).Times(2)
 
 	modelUUID := modeltesting.GenModelUUID(c)
@@ -1092,8 +1093,10 @@ func (s *modelManagerSuite) TestAddModelCantCreateModelForSomeoneElse(c *gc.C) {
 	s.setUpAPI(c)
 	addModelUser := names.NewUserTag("add-model")
 
+	cloudUUID := cloudtesting.GenCloudID(c)
+	s.cloudService.EXPECT().GetIDForCloud(gomock.Any(), "dummy").Return(cloudUUID, nil)
 	s.accessService.EXPECT().ReadUserAccessLevelForTarget(
-		gomock.Any(), user.NameFromTag(addModelUser), gomock.AssignableToTypeOf(permission.ID{}),
+		gomock.Any(), user.NameFromTag(addModelUser), permission.ID{ObjectType: permission.Cloud, Key: cloudUUID.String()},
 	).Return(permission.AddModelAccess, nil)
 
 	s.setAPIUser(c, addModelUser)
@@ -1148,6 +1151,7 @@ type modelManagerStateSuite struct {
 	authoriser   apiservertesting.FakeAuthorizer
 
 	controllerConfigService *mocks.MockControllerConfigService
+	cloudService            *mocks.MockCloudService
 	accessService           *mocks.MockAccessService
 	modelService            *mocks.MockModelService
 	applicationService      *mocks.MockApplicationService
@@ -1189,6 +1193,7 @@ func (s *modelManagerStateSuite) setupMocks(c *gc.C) *gomock.Controller {
 	s.modelService = mocks.NewMockModelService(ctrl)
 	s.applicationService = mocks.NewMockApplicationService(ctrl)
 	s.serviceFactoryGetter = mocks.NewMockServiceFactoryGetter(ctrl)
+	s.cloudService = mocks.NewMockCloudService(ctrl)
 
 	var fs assumes.FeatureSet
 	s.applicationService.EXPECT().GetSupportedFeatures(gomock.Any()).AnyTimes().Return(fs, nil)
@@ -1401,12 +1406,10 @@ func (s *modelManagerStateSuite) TestNonAdminCannotCreateModelForSomeoneElse(c *
 
 	userTag := names.NewUserTag("non-admin@remote")
 	s.setAPIUser(c, userTag)
-	as := s.accessService.EXPECT()
-	id := permission.ID{
-		ObjectType: permission.Cloud,
-		Key:        "dummy",
-	}
-	as.ReadUserAccessLevelForTarget(gomock.Any(), user.NameFromTag(userTag), id).Return(permission.WriteAccess, nil)
+
+	s.accessService.EXPECT().ReadUserAccessLevelForTarget(
+		gomock.Any(), user.NameFromTag(userTag), gomock.Any(),
+	).Return(permission.WriteAccess, nil)
 	owner := names.NewUserTag("external@remote")
 	_, err := s.modelmanager.CreateModel(stdcontext.Background(), createArgs(owner))
 	c.Assert(err, gc.ErrorMatches, "permission denied")
@@ -1417,12 +1420,10 @@ func (s *modelManagerStateSuite) TestNonAdminCannotCreateModelForSelf(c *gc.C) {
 
 	owner := names.NewUserTag("non-admin@remote")
 	s.setAPIUser(c, owner)
-	as := s.accessService.EXPECT()
-	id := permission.ID{
-		ObjectType: permission.Cloud,
-		Key:        "dummy",
-	}
-	as.ReadUserAccessLevelForTarget(gomock.Any(), user.NameFromTag(owner), id).Return(permission.WriteAccess, nil)
+
+	s.accessService.EXPECT().ReadUserAccessLevelForTarget(
+		gomock.Any(), user.NameFromTag(owner), gomock.Any(),
+	).Return(permission.WriteAccess, nil)
 
 	_, err := s.modelmanager.CreateModel(stdcontext.Background(), createArgs(owner))
 	c.Assert(err, gc.ErrorMatches, "permission denied")
