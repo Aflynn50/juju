@@ -20,6 +20,7 @@ import (
 	"github.com/juju/names/v5"
 
 	"github.com/juju/juju/core/arch"
+	corebase "github.com/juju/juju/core/base"
 	corecharm "github.com/juju/juju/core/charm"
 	"github.com/juju/juju/core/container"
 	"github.com/juju/juju/core/crossmodel"
@@ -954,9 +955,18 @@ func (e *exporter) addApplication(ctx addApplicationContext) error {
 	}
 
 	exApplication.SetCharmMetadata(charmData.Metadata)
-	exApplication.SetCharmManifest(charmData.Manifest)
 	exApplication.SetCharmActions(charmData.Actions)
 	exApplication.SetCharmConfigs(charmData.Config)
+	manifest := charmData.Manifest
+	// If the charm manifest is empty, generate one before migration.
+	if len(manifest.Bases) == 0 {
+		manifest, err = e.generateManifest(
+			*charmURL, application.CharmOrigin().Platform)
+		if err != nil {
+			return errors.Annotatef(err, "generating missing charm manifest from application platform")
+		}
+	}
+	exApplication.SetCharmManifest(manifest)
 
 	// Find the current application status.
 	statusArgs, err := e.statusArgs(globalKey)
@@ -3098,6 +3108,51 @@ func (e *exporter) charmManifest(ch *Charm) (description.CharmManifestArgs, erro
 			channel:       base.Channel.String(),
 			architectures: base.Architectures,
 		}
+	}
+
+	return description.CharmManifestArgs{
+		Bases: bases,
+	}, nil
+}
+
+// generateManifest generates the charm manifest based on the charm series
+// metadata and application platform data. This method should only be used when
+// no manifest is available. A charm needs to have a manifest in 4.0 and so it
+// must be generated before migration.
+func (e *exporter) generateManifest(charmURL string, p *Platform) (description.CharmManifestArgs, error) {
+	ch, err := e.st.Charm(charmURL)
+	if err != nil {
+		return description.CharmManifestArgs{}, errors.Annotatef(err, "getting charm %q", charmURL)
+	}
+
+	architecture := p.Architecture
+	meta := ch.Meta()
+	var bases []description.CharmManifestBase
+
+	// If the charm has no series data, use the platform data.
+	if len(meta.Series) == 0 {
+		bases = append(bases, charmManifestBase{
+			name:          p.OS,
+			channel:       p.Channel,
+			architectures: []string{architecture},
+		})
+		return description.CharmManifestArgs{
+			Bases: bases,
+		}, nil
+	}
+
+	// Generate the manifest data from the series data using the platform
+	// architecture.
+	for _, series := range meta.Series {
+		base, err := corebase.GetBaseFromSeries(series)
+		if err != nil {
+			return description.CharmManifestArgs{}, errors.Annotatef(err, "generating base from charm series metadata")
+		}
+		bases = append(bases, charmManifestBase{
+			name:          base.OS,
+			channel:       base.Channel.String(),
+			architectures: []string{architecture},
+		})
 	}
 
 	return description.CharmManifestArgs{

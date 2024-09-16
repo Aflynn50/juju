@@ -23,6 +23,7 @@ import (
 	"gopkg.in/macaroon.v2"
 
 	"github.com/juju/juju/core/arch"
+	"github.com/juju/juju/core/base"
 	"github.com/juju/juju/core/constraints"
 	"github.com/juju/juju/core/crossmodel"
 	"github.com/juju/juju/core/instance"
@@ -748,6 +749,57 @@ func (s *MigrationExportSuite) assertMigrateApplications(c *gc.C, isSidecar bool
 		}
 	}
 	c.Check(exportedConfigs, jc.DeepEquals, expectedConfigs)
+}
+
+func (s *MigrationExportSuite) TestApplicationGeneratedManifestFromSeries(c *gc.C) {
+	st := s.State
+	f := factory.NewFactory(st, s.StatePool)
+
+	// The bionic riak charm has series information but no manifest.
+	ch := f.MakeCharm(c, &factory.CharmParams{Series: "bionic", Name: "riak"})
+	application := f.MakeApplication(c, &factory.ApplicationParams{
+		Charm: ch,
+		CharmOrigin: &state.CharmOrigin{
+			Platform: &state.Platform{
+				Architecture: "amd64",
+				OS:           "ubuntu",
+				Channel:      "20.04/stable",
+			},
+		},
+	})
+
+	model, err := st.Export(map[string]string{})
+	c.Assert(err, jc.ErrorIsNil)
+	applications := model.Applications()
+	c.Assert(applications, gc.HasLen, 1)
+	exported := applications[0]
+
+	expectedManifestBases := make([]string, 0)
+	platform := application.CharmOrigin().Platform
+	// Generate the expected manifest.
+	for _, series := range ch.Meta().Series {
+		base, err := base.GetBaseFromSeries(series)
+		c.Assert(err, gc.IsNil)
+		expectedManifestBases = append(expectedManifestBases, fmt.Sprintf("%s %s %v",
+			base.OS,
+			base.Channel.String(),
+			[]string{platform.Architecture},
+		))
+	}
+
+	// Get exported manifest.
+	exportedCharmManifest := exported.CharmManifest()
+	c.Assert(exportedCharmManifest, gc.NotNil)
+	exportedManifestBases := make([]string, 0)
+	for _, base := range exportedCharmManifest.Bases() {
+		exportedManifestBases = append(exportedManifestBases, fmt.Sprintf("%s %s %v",
+			base.Name(),
+			base.Channel(),
+			base.Architectures(),
+		))
+	}
+
+	c.Check(exportedManifestBases, jc.DeepEquals, expectedManifestBases)
 }
 
 func (s *MigrationExportSuite) TestMalformedApplications(c *gc.C) {
