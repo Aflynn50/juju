@@ -13,6 +13,7 @@ import (
 	gc "gopkg.in/check.v1"
 
 	"github.com/juju/juju/core/network"
+	uniterrors "github.com/juju/juju/domain/unitstate/errors"
 	loggertesting "github.com/juju/juju/internal/logger/testing"
 )
 
@@ -103,4 +104,30 @@ func (s *importSuite) TestImport(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil)
 }
 
-panic("add more tests")
+func (s *importSuite) TestImportUnitNotFound(c *gc.C) {
+	defer s.setupMocks(c).Finish()
+
+	model := description.NewModel(description.ModelArgs{})
+	app := model.AddApplication(description.ApplicationArgs{
+		Tag: names.NewApplicationTag("app"),
+	})
+	app.AddOpenedPortRange(description.OpenedPortRangeArgs{
+		UnitName:     "unit-1",
+		EndpointName: "endpoint-1",
+		FromPort:     100,
+		ToPort:       200,
+		Protocol:     "udp",
+	})
+
+	s.service.EXPECT().SetUnitPorts(gomock.Any(), "unit-1", network.GroupedPortRanges{
+		"endpoint-1": []network.PortRange{{
+			FromPort: 100,
+			ToPort:   200,
+			Protocol: "udp",
+		}},
+	}).Return(uniterrors.UnitNotFound)
+
+	op := s.newImportOperation()
+	err := op.Execute(context.Background(), model)
+	c.Assert(err, jc.ErrorIs, uniterrors.UnitNotFound)
+}
