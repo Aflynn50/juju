@@ -20,11 +20,8 @@ import (
 
 	"github.com/juju/clock"
 	"github.com/juju/errors"
-	"github.com/juju/names/v5"
-	"github.com/juju/pubsub/v2"
 	"github.com/juju/ratelimit"
 	"github.com/prometheus/client_golang/prometheus"
-	"gopkg.in/tomb.v2"
 
 	"github.com/juju/juju/apiserver/apiserverhttp"
 	"github.com/juju/juju/apiserver/authentication"
@@ -1148,9 +1145,11 @@ func (srv *Server) serveConn(
 	domainServices := srv.shared.domainServicesGetter.ServicesForModel(modelUUID)
 
 	var handler *apiHandler
+	var stateClosing <-chan struct{}
 	st, err := srv.shared.statePool.Get(modelUUID.String())
 	if err == nil {
 		defer st.Release()
+		stateClosing = st.Removing()
 		handler, err = newAPIHandler(
 			ctx,
 			srv,
@@ -1189,6 +1188,7 @@ func (srv *Server) serveConn(
 	select {
 	case <-conn.Dead():
 	case <-srv.tomb.Dying():
+	case <-stateClosing:
 	}
 	return conn.Close()
 }
