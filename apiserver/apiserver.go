@@ -20,8 +20,11 @@ import (
 
 	"github.com/juju/clock"
 	"github.com/juju/errors"
+	"github.com/juju/names/v5"
+	"github.com/juju/pubsub/v2"
 	"github.com/juju/ratelimit"
 	"github.com/prometheus/client_golang/prometheus"
+	"gopkg.in/tomb.v2"
 
 	"github.com/juju/juju/apiserver/apiserverhttp"
 	"github.com/juju/juju/apiserver/authentication"
