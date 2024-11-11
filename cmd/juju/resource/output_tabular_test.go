@@ -334,7 +334,7 @@ data      combRev1  combRev1
 
 func fakeFmtSvcRes(name, suffix string) resourcecmd.FormattedAppResource {
 	return resourcecmd.FormattedAppResource{
-		ID:               "ID" + suffix,
+		ID:               "UUID" + suffix,
 		ApplicationID:    "svc",
 		Name:             name,
 		Type:             "Type" + suffix,

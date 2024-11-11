@@ -179,7 +179,7 @@ func (c Client) AddPendingResources(ctx context.Context, args AddPendingResource
 	}
 	for i, id := range result.PendingIDs {
 		if id == "" {
-			return nil, errors.Errorf("bad data from server: got an empty ID for resource %q", args.Resources[i].Name)
+			return nil, errors.Errorf("bad data from server: got an empty UUID for resource %q", args.Resources[i].Name)
 		}
 		// TODO(ericsnow) Do other validation?
 	}

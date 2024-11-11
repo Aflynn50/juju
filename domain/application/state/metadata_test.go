@@ -683,7 +683,7 @@ func (s *metadataStateSuite) TestMetadataResourceKind(c *gc.C) {
 	}
 
 	stmt := sqlair.MustPrepare(`
-SELECT charm_resource_kind.* AS &charmResourceKind.* FROM charm_resource_kind ORDER BY id;
+SELECT resource_kind.* AS &charmResourceKind.* FROM resource_kind ORDER BY id;
 `, charmResourceKind{})
 
 	var results []charmResourceKind

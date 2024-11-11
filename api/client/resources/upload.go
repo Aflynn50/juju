@@ -18,7 +18,7 @@ import (
 
 // UploadRequest defines a single upload request.
 type UploadRequest struct {
-	// Application is the application ID.
+	// Application is the application UUID.
 	Application string
 
 	// Name is the resource name.
@@ -33,7 +33,7 @@ type UploadRequest struct {
 	// Fingerprint is the fingerprint of the uploaded data.
 	Fingerprint charmresource.Fingerprint
 
-	// PendingID is the pending ID to associate with this upload, if any.
+	// PendingID is the pending UUID to associate with this upload, if any.
 	PendingID string
 
 	// Content is the content to upload.

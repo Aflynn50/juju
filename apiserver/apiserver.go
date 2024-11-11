@@ -146,7 +146,7 @@ type ServerConfig struct {
 	// ControllerUUID is the controller unique identifier.
 	ControllerUUID string
 
-	// ControllerModelUUID is the ID for the controller model.
+	// ControllerModelUUID is the UUID for the controller model.
 	ControllerModelUUID model.UUID
 
 	// LocalMacaroonAuthenticator is the request authenticator used for verifying

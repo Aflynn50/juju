@@ -143,7 +143,7 @@ type uploadedResource struct {
 	// Application is the name of the application associated with the resource.
 	Application string
 
-	// PendingID is the resource-specific sub-ID for a pending resource.
+	// PendingID is the resource-specific sub-UUID for a pending resource.
 	PendingID string
 
 	// Resource is the information about the resource.

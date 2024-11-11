@@ -32,7 +32,7 @@ type Backend interface {
 
 	// AddPendingResource adds the resource to the data backend in a
 	// "pending" state. It will stay pending (and unavailable) until
-	// it is resolved. The returned ID is used to identify the pending
+	// it is resolved. The returned UUID is used to identify the pending
 	// resources when resolving it.
 	AddPendingResource(applicationID, userID string, chRes charmresource.Resource) (string, error)
 }

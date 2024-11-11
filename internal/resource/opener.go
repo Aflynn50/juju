@@ -181,11 +181,12 @@ var resourceMutex = kmutex.New()
 // GetResource returns a reader for the resource's data. That data is
 // streamed from charmhub.
 //
-// If a cache is set up then the resource is read from there. If the
-// resource is not in the cache at all then errors.NotFound is returned.
-// If only the resource's details are in the cache (but not the actual
-// file) then the file is read from charmhub. In that case the
-// cache is updated to contain the file too.
+// If the resource service has the resource info and the resource file it is
+// read from the service.
+// If only the resource service has only the resource info but not the file then
+// the resource is download from charmhub and stored added in the service.
+// If the resource service does not know about the resource at all then
+// errors.NotFound is returned.
 func (ro ResourceOpener) getResource(ctx context.Context, resName string, done func()) (_ resources.Resource, rdr io.ReadCloser, err error) {
 	defer func() {
 		if err == nil {

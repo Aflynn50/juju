@@ -38,7 +38,7 @@ func (*resourcesSuite) TestIDValidate(c *gc.C) {
 
 	for i, test := range tests {
 		c.Logf("test %d: %q", i, test.uuid)
-		err := ID(test.uuid).Validate()
+		err := UUID(test.uuid).Validate()
 
 		if test.err == nil {
 			c.Check(err, gc.IsNil)
@@ -69,7 +69,7 @@ func (*resourcesSuite) TestParseID(c *gc.C) {
 
 	for i, test := range tests {
 		c.Logf("test %d: %q", i, test.uuid)
-		id, err := ParseID(test.uuid)
+		id, err := ParseUUID(test.uuid)
 
 		if test.err == nil {
 			if c.Check(err, gc.IsNil) {

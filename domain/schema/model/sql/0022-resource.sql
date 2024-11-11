@@ -65,11 +65,23 @@ CREATE TABLE resource_meta (
     description TEXT,
     CONSTRAINT fk_resource_type_id
     FOREIGN KEY (type_id)
-    REFERENCES charm_resource_kind (id),
+    REFERENCES resource_kind (id),
     PRIMARY KEY (application_uuid, name)
 );
 
 CREATE UNIQUE INDEX idx_resource_meta ON resource_meta (application_uuid, name);
+
+CREATE TABLE resource_kind (
+    id INT PRIMARY KEY,
+    name TEXT NOT NULL
+);
+
+CREATE UNIQUE INDEX idx_resource_kind_name
+    ON resource_kind (name);
+
+INSERT INTO resource_kind VALUES
+    (0, 'file'),
+    (1, 'oci-image');
 
 CREATE TABLE resource_supplied_by_type (
     id INT PRIMARY KEY,

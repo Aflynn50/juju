@@ -126,10 +126,10 @@ func newStubReadCloser(stub *testing.Stub, content string) io.ReadCloser {
 	}
 }
 
-// GenResourceID can be used in testing for generating a charm ID that is
+// GenResourceID can be used in testing for generating a charm UUID that is
 // checked for subsequent errors using the test suit's go check instance.
-func GenResourceID(c *gc.C) resources.ID {
-	id, err := resources.NewID()
+func GenResourceID(c *gc.C) resources.UUID {
+	id, err := resources.NewUUID()
 	c.Assert(err, jc.ErrorIsNil)
 	return id
 }

@@ -73,7 +73,7 @@ type Resource struct {
 	resource.Resource
 
 	// ID uniquely identifies a resource within the model.
-	ID resources.ID
+	ID resources.UUID
 
 	// ApplicationID identifies the application for the resource.
 	ApplicationID application.ID
@@ -147,7 +147,7 @@ type SetUnitResourceArgs struct {
 // SetUnitResourceResult is the result data from setting a unit's resource.
 type SetUnitResourceResult struct {
 	// ID uniquely identifies the unit resource within the model.
-	ID resources.ID
+	ID resources.UUID
 	// Timestamp indicates when the unit started using resource.
 	Timestamp time.Time
 }

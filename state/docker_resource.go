@@ -23,7 +23,7 @@ type dockerMetadataStorage struct {
 }
 
 type dockerMetadataDoc struct {
-	// Id holds the resource ID
+	// Id holds the resource UUID
 	Id string `bson:"_id"`
 
 	// RegistryPath holds the image name (including host) of the image in the docker registry.
@@ -94,7 +94,7 @@ func (dr *dockerMetadataStorage) Save(resourceID string, drInfo resources.Docker
 	return errors.Annotate(err, "failed to store Docker resource")
 }
 
-// Remove removes the Docker resource with the provided ID.
+// Remove removes the Docker resource with the provided UUID.
 func (dr *dockerMetadataStorage) Remove(resourceID string) error {
 	ops := []txn.Op{{
 		C:      dockerResourcesC,
@@ -137,7 +137,7 @@ func (dr *dockerMetadataStorage) get(resourceID string) (*dockerMetadataDoc, err
 	var doc dockerMetadataDoc
 	err := coll.FindId(resourceID).One(&doc)
 	if err == mgo.ErrNotFound {
-		return nil, errors.NotFoundf("Docker resource with ID: %s", resourceID)
+		return nil, errors.NotFoundf("Docker resource with UUID: %s", resourceID)
 	}
 	if err != nil {
 		return nil, errors.Trace(err)

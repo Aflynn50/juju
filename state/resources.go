@@ -40,7 +40,7 @@ type Resources interface {
 
 	// AddPendingResource adds the resource to the data store in a
 	// "pending" state. It will stay pending (and unavailable) until
-	// it is resolved. The returned ID is used to identify the pending
+	// it is resolved. The returned UUID is used to identify the pending
 	// resources when resolving it.
 	AddPendingResource(applicationID, userID string, chRes charmresource.Resource) (string, error)
 
@@ -111,7 +111,7 @@ const (
 	DoNotIncrementCharmModifiedVersion IncrementCharmModifiedVersionType = false
 )
 
-// resourceID converts an external resource ID into an internal one.
+// resourceID converts an external resource UUID into an internal one.
 func resourceID(id, subType, subID string) string {
 	if subType == "" {
 		return fmt.Sprintf("resource#%s", id)
@@ -135,7 +135,7 @@ func unitResourceID(id, unitID string) string {
 	return resourceID(id, "unit", unitID)
 }
 
-// stagedResourceID converts an external resource ID into an internal
+// stagedResourceID converts an external resource UUID into an internal
 // staged one.
 func stagedResourceID(id string) string {
 	return applicationResourceID(id) + resourcesStagedIDSuffix
@@ -145,12 +145,12 @@ func stagedResourceID(id string) string {
 func newPendingID() (string, error) {
 	uuid, err := uuid.NewUUID()
 	if err != nil {
-		return "", errors.Annotate(err, "could not create new resource ID")
+		return "", errors.Annotate(err, "could not create new resource UUID")
 	}
 	return uuid.String(), nil
 }
 
-// newAppResourceID produces a new ID to use for the resource in the model.
+// newAppResourceID produces a new UUID to use for the resource in the model.
 func newAppResourceID(applicationID, name string) string {
 	return fmt.Sprintf("%s/%s", applicationID, name)
 }
@@ -339,7 +339,7 @@ func doc2basicResource(doc resourceDoc) (resources.Resource, error) {
 // is stored in state storage. This requires that the returned string
 // be unique and that it be organized in a structured way. In this case
 // we start with a top-level (the application), then under that application use
-// the "resources" section. The provided ID is located under there.
+// the "resources" section. The provided UUID is located under there.
 func storagePath(name, applicationID, pendingID string) string {
 	// TODO(ericsnow) Use applications/<application>/resources/<resource>?
 	id := name
@@ -405,7 +405,7 @@ func (p *resourcePersistence) unitResources(unitID string) ([]resourceDoc, error
 	return docs, nil
 }
 
-// getOne returns the resource that matches the provided model ID.
+// getOne returns the resource that matches the provided model UUID.
 func (p *resourcePersistence) getOne(resID string) (resourceDoc, error) {
 	id := applicationResourceID(resID)
 	rLogger.Tracef("querying db for resource %q as %q", resID, id)
@@ -416,7 +416,7 @@ func (p *resourcePersistence) getOne(resID string) (resourceDoc, error) {
 	return doc, nil
 }
 
-// getOnePending returns the resource that matches the provided model ID.
+// getOnePending returns the resource that matches the provided model UUID.
 func (p *resourcePersistence) getOnePending(resID, pendingID string) (resourceDoc, error) {
 	id := pendingResourceID(resID, pendingID)
 	rLogger.Tracef("querying db for resource %q (pending %q) as %q", resID, pendingID, id)
@@ -515,7 +515,7 @@ func (p *resourcePersistence) ListPendingResources(applicationID string) (resour
 	return res, nil
 }
 
-// ListResources returns the non pending resource data for the given application ID.
+// ListResources returns the non pending resource data for the given application UUID.
 func (p *resourcePersistence) ListResources(applicationID string) (resources.ApplicationResources, error) {
 	res, err := p.listResources(applicationID, false)
 	if err != nil {
@@ -699,9 +699,9 @@ func (p *resourcePersistence) setCharmStoreResource(id, applicationID string, re
 func (st resourcePersistence) AddPendingResource(applicationID, userID string, chRes charmresource.Resource) (pendingID string, err error) {
 	pendingID, err = newPendingID()
 	if err != nil {
-		return "", errors.Annotate(err, "could not generate resource ID")
+		return "", errors.Annotate(err, "could not generate resource UUID")
 	}
-	rLogger.Debugf("adding pending resource %q for application %q (ID: %s)", chRes.Name, applicationID, pendingID)
+	rLogger.Debugf("adding pending resource %q for application %q (UUID: %s)", chRes.Name, applicationID, pendingID)
 
 	if _, err := st.setResource(context.TODO(), pendingID, applicationID, userID, chRes, nil, IncrementCharmModifiedVersion); err != nil {
 		return "", errors.Trace(err)
@@ -888,7 +888,7 @@ func (p *resourcePersistence) setResource(
 		ApplicationID: applicationID,
 	}
 	if r != nil {
-		// TODO(ericsnow) Validate the user ID (or use a tag).
+		// TODO(ericsnow) Validate the user UUID (or use a tag).
 		res.Username = userID
 		res.Timestamp = p.st.clock().Now().UTC()
 	}
@@ -1130,7 +1130,7 @@ func (p *resourcePersistence) resolveApplicationPendingResourcesOps(applicationI
 func (p *resourcePersistence) resolvePendingResourceOps(resID, pendingID string) ([]txn.Op, error) {
 	rLogger.Tracef("resolve pending resource ops %q, %q", resID, pendingID)
 	if pendingID == "" {
-		return nil, errors.New("missing pending ID")
+		return nil, errors.New("missing pending UUID")
 	}
 
 	oldDoc, err := p.getOnePending(resID, pendingID)
@@ -1387,7 +1387,7 @@ func newRemoveResourcesOps(docs []resourceDoc) []txn.Op {
 // will resolve a pending resource doc and make it active.
 //
 // We trust that the provided resource really is pending
-// and that it matches the existing doc with the same ID.
+// and that it matches the existing doc with the same UUID.
 func newResolvePendingResourceOps(pending storedResource, exists, csExists bool) []txn.Op {
 	oldID := pendingResourceID(pending.ID, pending.PendingID)
 	newRes := pending

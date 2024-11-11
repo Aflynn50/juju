@@ -394,17 +394,6 @@ CREATE TABLE charm_payload (
 CREATE INDEX idx_charm_payload_charm
 ON charm_payload (charm_uuid);
 
-CREATE TABLE charm_resource_kind (
-    id INT PRIMARY KEY,
-    name TEXT NOT NULL
-);
-
-CREATE UNIQUE INDEX idx_charm_resource_kind_name
-ON charm_resource_kind (name);
-
-INSERT INTO charm_resource_kind VALUES
-(0, 'file'),
-(1, 'oci-image');
 
 CREATE TABLE charm_resource (
     charm_uuid TEXT NOT NULL,
@@ -416,9 +405,9 @@ CREATE TABLE charm_resource (
     CONSTRAINT fk_charm_resource_charm
     FOREIGN KEY (charm_uuid)
     REFERENCES charm (uuid),
-    CONSTRAINT fk_charm_resource_charm_resource_kind
+    CONSTRAINT fk_charm_resource_resource_kind
     FOREIGN KEY (kind_id)
-    REFERENCES charm_resource_kind (id),
+    REFERENCES resource_kind (id),
     PRIMARY KEY (charm_uuid, "key")
 );
 
@@ -431,7 +420,7 @@ SELECT
     cr.path,
     cr.description
 FROM charm_resource AS cr
-LEFT JOIN charm_resource_kind AS crk ON cr.kind_id = crk.id;
+LEFT JOIN resource_kind AS crk ON cr.kind_id = crk.id;
 
 CREATE INDEX idx_charm_resource_charm
 ON charm_resource (charm_uuid);

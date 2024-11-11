@@ -35,7 +35,7 @@ import (
 // A resource may also be added to the model as "pending", meaning it
 // is queued up to be used as a resource for the application. Until it is
 // "activated", a pending resources is virtually invisible. There may
-// be more that one pending resource for a given resource ID.
+// be more that one pending resource for a given resource UUID.
 type Resource struct {
 	resource.Resource
 
@@ -47,7 +47,7 @@ type Resource struct {
 
 	// PendingID identifies that this resource is pending and
 	// distinguishes it from other pending resources with the same model
-	// ID (and from the active resource). The active resource for the
+	// UUID (and from the active resource). The active resource for the
 	// applications will not have PendingID set.
 	// Deprecated.
 	PendingID string
@@ -55,10 +55,10 @@ type Resource struct {
 	// ApplicationID identifies the application for the resource.
 	ApplicationID string
 
-	// Username is the ID of who added the resource to the controller.
-	// The ID is a username if the resource is uploaded from the cli
+	// Username is the UUID of who added the resource to the controller.
+	// The UUID is a username if the resource is uploaded from the cli
 	// by a specific user. If the resources is downloaded from a repository,
-	// the ID of the unit which triggered the download, or the name of
+	// the UUID of the unit which triggered the download, or the name of
 	// the application in the case of oci-images.
 	Username string
 
@@ -78,7 +78,7 @@ func (res Resource) Validate() error {
 	}
 
 	if res.ApplicationID == "" {
-		return errors.NewNotValid(nil, "missing application ID")
+		return errors.NewNotValid(nil, "missing application UUID")
 	}
 
 	// TODO(ericsnow) Require that Username be set if timestamp is?
