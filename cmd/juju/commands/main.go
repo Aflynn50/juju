@@ -32,6 +32,7 @@ import (
 	"github.com/juju/juju/cmd/juju/machine"
 	"github.com/juju/juju/cmd/juju/model"
 	"github.com/juju/juju/cmd/juju/payload"
+	"github.com/juju/juju/cmd/juju/qotd"
 	"github.com/juju/juju/cmd/juju/resource"
 	"github.com/juju/juju/cmd/juju/secretbackends"
 	"github.com/juju/juju/cmd/juju/secrets"
@@ -564,6 +565,9 @@ func registerCommands(r commandRegistry) {
 	// Agreement commands
 	r.Register(agree.NewAgreeCommand())
 	r.Register(listagreements.NewListAgreementsCommand())
+
+	// Quote of the day commands
+	r.Register(qotd.NewSetQOTDAuthorCommand())
 }
 
 type cloudToCommandAdaptor struct{}
