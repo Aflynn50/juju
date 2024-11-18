@@ -73,10 +73,10 @@ type Resource struct {
 	resource.Resource
 
 	// ID uniquely identifies a resource within the model.
-	ID resources.UUID
+	UUID resources.UUID
 
-	// ApplicationID identifies the application for the resource.
-	ApplicationID application.ID
+	// ApplicationUUID identifies the application for the resource.
+	ApplicationUUID application.ID
 
 	// SuppliedBy is the name of who added the resource to the controller.
 	// The name is a username if the resource is uploaded from the cli
@@ -105,8 +105,8 @@ const (
 
 // UnitResources contains the list of resources used by a unit.
 type UnitResources struct {
-	// ID is the ID of the unit.
-	ID unit.UUID
+	// UUID is the ID of the unit.
+	UUID unit.UUID
 
 	// Resources are the resource versions currently in use by this unit.
 	Resources []Resource
@@ -122,23 +122,23 @@ type UnitResources struct {
 // GetApplicationResourceIDArgs holds the arguments for the
 // GetApplicationResourceID method.
 type GetApplicationResourceIDArgs struct {
-	ApplicationID application.ID
-	Name          string
+	ApplicationUUID application.ID
+	Name            string
 }
 
 // SetResourceArgs holds the arguments for the SetResource method.
 type SetResourceArgs struct {
-	ApplicationID  application.ID
-	SuppliedBy     string
-	SuppliedByType SuppliedByType
-	Resource       resource.Resource
-	Reader         io.Reader
-	Increment      IncrementCharmModifiedVersionType
+	ApplicationUUID application.ID
+	SuppliedBy      string
+	SuppliedByType  SuppliedByType
+	Resource        resource.Resource
+	Reader          io.Reader
+	Increment       IncrementCharmModifiedVersionType
 }
 
 // SetUnitResourceArgs holds the arguments for the SetUnitResource method.
 type SetUnitResourceArgs struct {
-	UnitID         unit.UUID
+	UnitUUID       unit.UUID
 	SuppliedBy     string
 	SuppliedByType SuppliedByType
 	Resource       resource.Resource
@@ -146,8 +146,8 @@ type SetUnitResourceArgs struct {
 
 // SetUnitResourceResult is the result data from setting a unit's resource.
 type SetUnitResourceResult struct {
-	// ID uniquely identifies the unit resource within the model.
-	ID resources.UUID
+	// UUID uniquely identifies the unit resource within the model.
+	UUID resources.UUID
 	// Timestamp indicates when the unit started using resource.
 	Timestamp time.Time
 }
@@ -155,8 +155,8 @@ type SetUnitResourceResult struct {
 // SetRepositoryResourcesArgs holds the arguments for the
 // SetRepositoryResources method.
 type SetRepositoryResourcesArgs struct {
-	// ApplicationID is the id of the application having these resources.
-	ApplicationID application.ID
+	// ApplicationUUID is the id of the application having these resources.
+	ApplicationUUID application.ID
 	// Info is a slice of resource data received from the repository.
 	Info []resource.Resource
 	// LastPolled indicates when the resource data was last polled.
