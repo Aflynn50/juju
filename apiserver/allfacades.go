@@ -58,6 +58,7 @@ import (
 	"github.com/juju/juju/apiserver/facades/client/modelupgrader"
 	"github.com/juju/juju/apiserver/facades/client/payloads"
 	"github.com/juju/juju/apiserver/facades/client/pinger"
+	"github.com/juju/juju/apiserver/facades/client/qotd"
 	"github.com/juju/juju/apiserver/facades/client/resources"
 	"github.com/juju/juju/apiserver/facades/client/secretbackends"
 	"github.com/juju/juju/apiserver/facades/client/secrets"
@@ -261,6 +262,8 @@ func AllFacades() *facade.Registry {
 	upgrader.Register(registry)
 	upgradesteps.Register(registry)
 	usermanager.Register(registry)
+
+	qotd.Register(registry)
 
 	registerWatchers(registry)
 

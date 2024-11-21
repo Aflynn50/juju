@@ -29470,6 +29470,99 @@
         }
     },
     {
+        "Name": "QOTD",
+        "Description": "QOTDAPI implements the client API for the quote of the day feature.",
+        "Version": 1,
+        "AvailableTo": [
+            "model-user"
+        ],
+        "Schema": {
+            "type": "object",
+            "properties": {
+                "SetQOTDAuthor": {
+                    "type": "object",
+                    "properties": {
+                        "Params": {
+                            "$ref": "#/definitions/SetQOTDAuthorArgs"
+                        },
+                        "Result": {
+                            "$ref": "#/definitions/SetQOTDAuthorResult"
+                        }
+                    },
+                    "description": "SetQOTDAuthor sets the author of the quote of the day."
+                }
+            },
+            "definitions": {
+                "Entity": {
+                    "type": "object",
+                    "properties": {
+                        "tag": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                        "tag"
+                    ]
+                },
+                "Error": {
+                    "type": "object",
+                    "properties": {
+                        "code": {
+                            "type": "string"
+                        },
+                        "info": {
+                            "type": "object",
+                            "patternProperties": {
+                                ".*": {
+                                    "type": "object",
+                                    "additionalProperties": true
+                                }
+                            }
+                        },
+                        "message": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                        "message",
+                        "code"
+                    ]
+                },
+                "SetQOTDAuthorArgs": {
+                    "type": "object",
+                    "properties": {
+                        "Entity": {
+                            "$ref": "#/definitions/Entity"
+                        },
+                        "author": {
+                            "type": "string"
+                        },
+                        "tag": {
+                            "type": "string"
+                        }
+                    },
+                    "additionalProperties": false,
+                    "required": [
+                        "tag",
+                        "Entity",
+                        "author"
+                    ]
+                },
+                "SetQOTDAuthorResult": {
+                    "type": "object",
+                    "properties": {
+                        "error": {
+                            "$ref": "#/definitions/Error"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            }
+        }
+    },
+    {
         "Name": "Reboot",
         "Description": "RebootAPI provides access to the Reboot API facade.",
         "Version": 2,
