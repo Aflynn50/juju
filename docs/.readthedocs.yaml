@@ -9,6 +9,7 @@ version: 2
 build:
   os: ubuntu-22.04
   tools:
+    golang: latest
     python: "3.11"
   jobs:
     pre_install:
