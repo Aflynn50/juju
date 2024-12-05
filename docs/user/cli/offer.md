@@ -1,5 +1,5 @@
-(offer.md)=
-# `offer`
+(command-juju-offer)=
+# Command `juju offer`
 > See also: [consume](#consume), [integrate](#integrate), [remove-saas](#remove-saas)
 
 ## Summary

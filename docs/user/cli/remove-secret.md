@@ -1,5 +1,5 @@
-(remove-secret.md)=
-# `remove-secret`
+(command-juju-remove-secret)=
+# Command `juju remove-secret`
 
 ## Summary
 Remove a existing secret.

@@ -1,5 +1,5 @@
-(destroy-controller.md)=
-# `destroy-controller`
+(command-juju-destroy-controller)=
+# Command `juju destroy-controller`
 > See also: [kill-controller](#kill-controller), [unregister](#unregister)
 
 ## Summary

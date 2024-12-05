@@ -1,5 +1,5 @@
-(documentation.md)=
-# `documentation`
+(command-juju-documentation)=
+# Command `juju documentation`
 
 ## Summary
 Generate the documentation for all commands

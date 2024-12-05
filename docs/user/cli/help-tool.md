@@ -1,5 +1,5 @@
-(help-tool.md)=
-# `help-tool`
+(command-juju-help-tool)=
+# Command `juju help-tool`
 > See also: [help](#help)
 
 ## Summary

@@ -1,5 +1,5 @@
-(import-ssh-key.md)=
-# `import-ssh-key`
+(command-juju-import-ssh-key)=
+# Command `juju import-ssh-key`
 > See also: [add-ssh-key](#add-ssh-key), [ssh-keys](#ssh-keys)
 
 ## Summary

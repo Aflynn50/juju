@@ -1,5 +1,5 @@
-(update-public-clouds.md)=
-# `update-public-clouds`
+(command-juju-update-public-clouds)=
+# Command `juju update-public-clouds`
 > See also: [clouds](#clouds)
 
 ## Summary

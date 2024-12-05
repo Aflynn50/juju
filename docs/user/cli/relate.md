@@ -1,5 +1,5 @@
-(relate.md)=
-# `relate`
+(command-juju-relate)=
+# Command `juju relate`
 > See also: [consume](#consume), [find-offers](#find-offers), [set-firewall-rule](#set-firewall-rule), [suspend-relation](#suspend-relation)
 **Alias:** integrate
 

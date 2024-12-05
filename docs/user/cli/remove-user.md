@@ -1,5 +1,5 @@
-(remove-user.md)=
-# `remove-user`
+(command-juju-remove-user)=
+# Command `juju remove-user`
 > See also: [unregister](#unregister), [revoke](#revoke), [show-user](#show-user), [users](#users), [disable-user](#disable-user), [enable-user](#enable-user), [change-user-password](#change-user-password)
 
 ## Summary

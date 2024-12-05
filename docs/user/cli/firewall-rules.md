@@ -1,5 +1,5 @@
-(firewall-rules.md)=
-# `firewall-rules`
+(command-juju-firewall-rules)=
+# Command `juju firewall-rules`
 > See also: [set-firewall-rule](#set-firewall-rule)
 
 ## Summary

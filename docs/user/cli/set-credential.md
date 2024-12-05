@@ -1,5 +1,5 @@
-(set-credential.md)=
-# `set-credential`
+(command-juju-set-credential)=
+# Command `juju set-credential`
 > See also: [credentials](#credentials), [show-credential](#show-credential), [update-credential](#update-credential)
 
 ## Summary

@@ -1,5 +1,5 @@
-(export-bundle.md)=
-# `export-bundle`
+(command-juju-export-bundle)=
+# Command `juju export-bundle`
 
 ## Summary
 Exports the current model configuration as a reusable bundle.

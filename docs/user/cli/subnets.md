@@ -1,5 +1,5 @@
-(subnets.md)=
-# `subnets`
+(command-juju-subnets)=
+# Command `juju subnets`
 
 ## Summary
 List subnets known to Juju.

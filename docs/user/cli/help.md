@@ -1,5 +1,5 @@
-(help.md)=
-# `help`
+(command-juju-help)=
+# Command `juju help`
 
 ## Summary
 Show help on a command or other topic.

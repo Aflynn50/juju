@@ -1,5 +1,5 @@
-(sync-agent-binary.md)=
-# `sync-agent-binary`
+(command-juju-sync-agent-binary)=
+# Command `juju sync-agent-binary`
 > See also: [upgrade-controller](#upgrade-controller)
 
 ## Summary

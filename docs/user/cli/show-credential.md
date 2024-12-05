@@ -1,5 +1,5 @@
-(show-credential.md)=
-# `show-credential`
+(command-juju-show-credential)=
+# Command `juju show-credential`
 > See also: [credentials](#credentials), [add-credential](#add-credential), [update-credential](#update-credential), [remove-credential](#remove-credential), [autoload-credentials](#autoload-credentials)
 
 ## Summary

@@ -9,3 +9,6 @@ Juju supports the following commands:
 ```{toctree}
 :titlesonly:
 :glob:
+
+*
+```

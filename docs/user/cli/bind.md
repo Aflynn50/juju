@@ -1,5 +1,5 @@
-(bind.md)=
-# `bind`
+(command-juju-bind)=
+# Command `juju bind`
 > See also: [spaces](#spaces), [show-space](#show-space), [show-application](#show-application)
 
 ## Summary

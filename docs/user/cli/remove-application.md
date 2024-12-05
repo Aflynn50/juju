@@ -1,5 +1,5 @@
-(remove-application.md)=
-# `remove-application`
+(command-juju-remove-application)=
+# Command `juju remove-application`
 > See also: [scale-application](#scale-application), [show-application](#show-application)
 
 ## Summary

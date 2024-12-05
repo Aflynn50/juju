@@ -1,5 +1,5 @@
-(switch.md)=
-# `switch`
+(command-juju-switch)=
+# Command `juju switch`
 > See also: [controllers](#controllers), [models](#models), [show-controller](#show-controller)
 
 ## Summary

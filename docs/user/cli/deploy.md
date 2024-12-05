@@ -1,5 +1,5 @@
-(deploy.md)=
-# `deploy`
+(command-juju-deploy)=
+# Command `juju deploy`
 > See also: [integrate](#integrate), [add-unit](#add-unit), [config](#config), [expose](#expose), [constraints](#constraints), [refresh](#refresh), [set-constraints](#set-constraints), [spaces](#spaces), [charm-resources](#charm-resources)
 
 ## Summary

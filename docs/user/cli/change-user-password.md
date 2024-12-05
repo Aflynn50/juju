@@ -1,5 +1,5 @@
-(change-user-password.md)=
-# `change-user-password`
+(command-juju-change-user-password)=
+# Command `juju change-user-password`
 > See also: [add-user](#add-user), [register](#register)
 
 ## Summary

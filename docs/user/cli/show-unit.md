@@ -1,5 +1,5 @@
-(show-unit.md)=
-# `show-unit`
+(command-juju-show-unit)=
+# Command `juju show-unit`
 > See also: [add-unit](#add-unit), [remove-unit](#remove-unit)
 
 ## Summary

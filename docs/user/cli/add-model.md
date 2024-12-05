@@ -1,5 +1,5 @@
-(add-model.md)=
-# `add-model`
+(command-juju-add-model)=
+# Command `juju add-model`
 > See also: [model-config](#model-config), [model-defaults](#model-defaults), [add-credential](#add-credential), [autoload-credentials](#autoload-credentials)
 
 ## Summary

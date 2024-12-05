@@ -1,5 +1,5 @@
-(list-credentials.md)=
-# `list-credentials`
+(command-juju-list-credentials)=
+# Command `juju list-credentials`
 > See also: [add-credential](#add-credential), [update-credential](#update-credential), [remove-credential](#remove-credential), [default-credential](#default-credential), [autoload-credentials](#autoload-credentials), [show-credential](#show-credential)
 **Alias:** credentials
 

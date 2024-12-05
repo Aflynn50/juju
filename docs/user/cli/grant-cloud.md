@@ -1,5 +1,5 @@
-(grant-cloud.md)=
-# `grant-cloud`
+(command-juju-grant-cloud)=
+# Command `juju grant-cloud`
 > See also: [grant](#grant), [revoke-cloud](#revoke-cloud), [add-user](#add-user)
 
 ## Summary

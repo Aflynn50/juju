@@ -1,5 +1,5 @@
-(resolved.md)=
-# `resolved`
+(command-juju-resolved)=
+# Command `juju resolved`
 
 ## Summary
 Marks unit errors resolved and re-executes failed hooks.

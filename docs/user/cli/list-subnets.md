@@ -1,5 +1,5 @@
-(list-subnets.md)=
-# `list-subnets`
+(command-juju-list-subnets)=
+# Command `juju list-subnets`
 **Alias:** subnets
 
 ## Summary

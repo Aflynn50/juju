@@ -1,5 +1,5 @@
-(show-machine.md)=
-# `show-machine`
+(command-juju-show-machine)=
+# Command `juju show-machine`
 > See also: [add-machine](#add-machine)
 
 ## Summary

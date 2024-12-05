@@ -1,5 +1,5 @@
-(show-task.md)=
-# `show-task`
+(command-juju-show-task)=
+# Command `juju show-task`
 > See also: [cancel-task](#cancel-task), [run](#run), [operations](#operations), [show-operation](#show-operation)
 
 ## Summary

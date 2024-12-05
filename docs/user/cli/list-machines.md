@@ -1,5 +1,5 @@
-(list-machines.md)=
-# `list-machines`
+(command-juju-list-machines)=
+# Command `juju list-machines`
 > See also: [status](#status)
 **Alias:** machines
 

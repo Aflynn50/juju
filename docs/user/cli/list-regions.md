@@ -1,5 +1,5 @@
-(list-regions.md)=
-# `list-regions`
+(command-juju-list-regions)=
+# Command `juju list-regions`
 > See also: [add-cloud](#add-cloud), [clouds](#clouds), [show-cloud](#show-cloud), [update-cloud](#update-cloud), [update-public-clouds](#update-public-clouds)
 **Alias:** regions
 

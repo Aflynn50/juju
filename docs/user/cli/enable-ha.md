@@ -1,5 +1,5 @@
-(enable-ha.md)=
-# `enable-ha`
+(command-juju-enable-ha)=
+# Command `juju enable-ha`
 
 ## Summary
 Ensure that sufficient controllers exist to provide redundancy.

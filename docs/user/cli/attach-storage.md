@@ -1,5 +1,5 @@
-(attach-storage.md)=
-# `attach-storage`
+(command-juju-attach-storage)=
+# Command `juju attach-storage`
 
 ## Summary
 Attaches existing storage to a unit.

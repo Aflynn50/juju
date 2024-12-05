@@ -1,5 +1,5 @@
-(list-controllers.md)=
-# `list-controllers`
+(command-juju-list-controllers)=
+# Command `juju list-controllers`
 > See also: [models](#models), [show-controller](#show-controller)
 **Alias:** controllers
 

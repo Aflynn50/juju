@@ -1,5 +1,5 @@
-(list-charm-resources.md)=
-# `list-charm-resources`
+(command-juju-list-charm-resources)=
+# Command `juju list-charm-resources`
 > See also: [resources](#resources), [attach-resource](#attach-resource)
 **Alias:** charm-resources
 

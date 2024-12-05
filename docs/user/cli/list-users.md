@@ -1,5 +1,5 @@
-(list-users.md)=
-# `list-users`
+(command-juju-list-users)=
+# Command `juju list-users`
 > See also: [add-user](#add-user), [register](#register), [show-user](#show-user), [disable-user](#disable-user), [enable-user](#enable-user)
 **Alias:** users
 

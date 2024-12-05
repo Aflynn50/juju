@@ -1,5 +1,5 @@
-(payloads.md)=
-# `payloads`
+(command-juju-payloads)=
+# Command `juju payloads`
 
 ## Summary
 Display status information about known payloads.

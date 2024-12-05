@@ -1,5 +1,5 @@
-(remove-unit.md)=
-# `remove-unit`
+(command-juju-remove-unit)=
+# Command `juju remove-unit`
 > See also: [remove-application](#remove-application), [scale-application](#scale-application)
 
 ## Summary

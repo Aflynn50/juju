@@ -1,5 +1,5 @@
-(secrets.md)=
-# `secrets`
+(command-juju-secrets)=
+# Command `juju secrets`
 > See also: [add-secret](#add-secret), [remove-secret](#remove-secret), [show-secret](#show-secret), [update-secret](#update-secret)
 
 ## Summary

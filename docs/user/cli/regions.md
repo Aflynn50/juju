@@ -1,5 +1,5 @@
-(regions.md)=
-# `regions`
+(command-juju-regions)=
+# Command `juju regions`
 > See also: [add-cloud](#add-cloud), [clouds](#clouds), [show-cloud](#show-cloud), [update-cloud](#update-cloud), [update-public-clouds](#update-public-clouds)
 
 ## Summary

@@ -1,5 +1,5 @@
-(model-config.md)=
-# `model-config`
+(command-juju-model-config)=
+# Command `juju model-config`
 > See also: [models](#models), [model-defaults](#model-defaults), [show-cloud](#show-cloud), [controller-config](#controller-config)
 
 ## Summary

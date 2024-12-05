@@ -1,5 +1,5 @@
-(revoke-cloud.md)=
-# `revoke-cloud`
+(command-juju-revoke-cloud)=
+# Command `juju revoke-cloud`
 > See also: [grant-cloud](#grant-cloud)
 
 ## Summary

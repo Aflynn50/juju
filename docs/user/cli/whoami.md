@@ -1,5 +1,5 @@
-(whoami.md)=
-# `whoami`
+(command-juju-whoami)=
+# Command `juju whoami`
 > See also: [controllers](#controllers), [login](#login), [logout](#logout), [models](#models), [users](#users)
 
 ## Summary

@@ -1,5 +1,5 @@
-(update-storage-pool.md)=
-# `update-storage-pool`
+(command-juju-update-storage-pool)=
+# Command `juju update-storage-pool`
 > See also: [create-storage-pool](#create-storage-pool), [remove-storage-pool](#remove-storage-pool), [storage-pools](#storage-pools)
 
 ## Summary

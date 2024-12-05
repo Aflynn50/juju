@@ -1,5 +1,5 @@
-(add-secret.md)=
-# `add-secret`
+(command-juju-add-secret)=
+# Command `juju add-secret`
 
 ## Summary
 Add a new secret.

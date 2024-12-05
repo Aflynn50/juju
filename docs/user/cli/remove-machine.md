@@ -1,5 +1,5 @@
-(remove-machine.md)=
-# `remove-machine`
+(command-juju-remove-machine)=
+# Command `juju remove-machine`
 > See also: [add-machine](#add-machine)
 
 ## Summary

@@ -1,5 +1,5 @@
-(retry-provisioning.md)=
-# `retry-provisioning`
+(command-juju-retry-provisioning)=
+# Command `juju retry-provisioning`
 
 ## Summary
 Retries provisioning for failed machines.

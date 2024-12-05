@@ -1,5 +1,5 @@
-(config.md)=
-# `config`
+(command-juju-config)=
+# Command `juju config`
 > See also: [deploy](#deploy), [status](#status), [model-config](#model-config), [controller-config](#controller-config)
 
 ## Summary

@@ -1,5 +1,5 @@
-(bootstrap.md)=
-# `bootstrap`
+(command-juju-bootstrap)=
+# Command `juju bootstrap`
 > See also: [add-credential](#add-credential), [autoload-credentials](#autoload-credentials), [add-model](#add-model), [controller-config](#controller-config), [model-config](#model-config), [set-constraints](#set-constraints), [show-cloud](#show-cloud)
 
 ## Summary

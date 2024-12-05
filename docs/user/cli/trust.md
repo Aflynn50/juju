@@ -1,5 +1,5 @@
-(trust.md)=
-# `trust`
+(command-juju-trust)=
+# Command `juju trust`
 > See also: [config](#config)
 
 ## Summary

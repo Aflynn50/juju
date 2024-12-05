@@ -1,5 +1,5 @@
-(show-storage.md)=
-# `show-storage`
+(command-juju-show-storage)=
+# Command `juju show-storage`
 > See also: [storage](#storage), [attach-storage](#attach-storage), [detach-storage](#detach-storage), [remove-storage](#remove-storage)
 
 ## Summary

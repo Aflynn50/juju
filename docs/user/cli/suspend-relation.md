@@ -1,5 +1,5 @@
-(suspend-relation.md)=
-# `suspend-relation`
+(command-juju-suspend-relation)=
+# Command `juju suspend-relation`
 > See also: [integrate](#integrate), [offers](#offers), [remove-relation](#remove-relation), [resume-relation](#resume-relation)
 
 ## Summary

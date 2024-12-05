@@ -1,5 +1,5 @@
-(import-filesystem.md)=
-# `import-filesystem`
+(command-juju-import-filesystem)=
+# Command `juju import-filesystem`
 > See also: [storage](#storage)
 
 ## Summary

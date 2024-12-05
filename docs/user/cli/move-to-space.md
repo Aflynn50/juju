@@ -1,5 +1,5 @@
-(move-to-space.md)=
-# `move-to-space`
+(command-juju-move-to-space)=
+# Command `juju move-to-space`
 > See also: [add-space](#add-space), [spaces](#spaces), [reload-spaces](#reload-spaces), [rename-space](#rename-space), [show-space](#show-space), [remove-space](#remove-space)
 
 ## Summary

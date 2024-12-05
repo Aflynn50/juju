@@ -1,5 +1,5 @@
-(create-storage-pool.md)=
-# `create-storage-pool`
+(command-juju-create-storage-pool)=
+# Command `juju create-storage-pool`
 > See also: [remove-storage-pool](#remove-storage-pool), [update-storage-pool](#update-storage-pool), [storage-pools](#storage-pools)
 
 ## Summary

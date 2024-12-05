@@ -1,5 +1,5 @@
-(show-controller.md)=
-# `show-controller`
+(command-juju-show-controller)=
+# Command `juju show-controller`
 > See also: [controllers](#controllers)
 
 ## Summary

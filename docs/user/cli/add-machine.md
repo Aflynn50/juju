@@ -1,5 +1,5 @@
-(add-machine.md)=
-# `add-machine`
+(command-juju-add-machine)=
+# Command `juju add-machine`
 > See also: [remove-machine](#remove-machine), [model-constraints](#model-constraints), [set-model-constraints](#set-model-constraints)
 
 ## Summary

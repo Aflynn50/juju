@@ -1,5 +1,5 @@
-(diff-bundle.md)=
-# `diff-bundle`
+(command-juju-diff-bundle)=
+# Command `juju diff-bundle`
 > See also: [deploy](#deploy)
 
 ## Summary

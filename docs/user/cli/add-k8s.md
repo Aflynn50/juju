@@ -1,5 +1,5 @@
-(add-k8s.md)=
-# `add-k8s`
+(command-juju-add-k8s)=
+# Command `juju add-k8s`
 > See also: [remove-k8s](#remove-k8s)
 
 ## Summary

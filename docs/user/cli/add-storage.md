@@ -1,5 +1,5 @@
-(add-storage.md)=
-# `add-storage`
+(command-juju-add-storage)=
+# Command `juju add-storage`
 > See also: [import-filesystem](#import-filesystem), [storage](#storage), [storage-pools](#storage-pools)
 
 ## Summary

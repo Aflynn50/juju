@@ -1,5 +1,5 @@
-(ssh.md)=
-# `ssh`
+(command-juju-ssh)=
+# Command `juju ssh`
 > See also: [scp](#scp)
 
 ## Summary

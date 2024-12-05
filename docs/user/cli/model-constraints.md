@@ -1,5 +1,5 @@
-(model-constraints.md)=
-# `model-constraints`
+(command-juju-model-constraints)=
+# Command `juju model-constraints`
 > See also: [models](#models), [constraints](#constraints), [set-constraints](#set-constraints), [set-model-constraints](#set-model-constraints)
 
 ## Summary

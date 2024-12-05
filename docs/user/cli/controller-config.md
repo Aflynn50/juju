@@ -1,5 +1,5 @@
-(controller-config.md)=
-# `controller-config`
+(command-juju-controller-config)=
+# Command `juju controller-config`
 > See also: [controllers](#controllers), [model-config](#model-config), [show-cloud](#show-cloud)
 
 ## Summary

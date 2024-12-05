@@ -1,5 +1,5 @@
-(resolve.md)=
-# `resolve`
+(command-juju-resolve)=
+# Command `juju resolve`
 **Alias:** resolved
 
 ## Summary

@@ -1,5 +1,5 @@
-(remove-storage.md)=
-# `remove-storage`
+(command-juju-remove-storage)=
+# Command `juju remove-storage`
 > See also: [add-storage](#add-storage), [attach-storage](#attach-storage), [detach-storage](#detach-storage), [list-storage](#list-storage), [show-storage](#show-storage), [storage](#storage)
 
 ## Summary

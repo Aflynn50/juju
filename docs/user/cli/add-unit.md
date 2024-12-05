@@ -1,5 +1,5 @@
-(add-unit.md)=
-# `add-unit`
+(command-juju-add-unit)=
+# Command `juju add-unit`
 > See also: [remove-unit](#remove-unit)
 
 ## Summary

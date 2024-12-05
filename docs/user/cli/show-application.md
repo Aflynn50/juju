@@ -1,5 +1,5 @@
-(show-application.md)=
-# `show-application`
+(command-juju-show-application)=
+# Command `juju show-application`
 
 ## Summary
 Displays information about an application.

@@ -1,5 +1,5 @@
-(list-spaces.md)=
-# `list-spaces`
+(command-juju-list-spaces)=
+# Command `juju list-spaces`
 > See also: [add-space](#add-space), [reload-spaces](#reload-spaces)
 **Alias:** spaces
 

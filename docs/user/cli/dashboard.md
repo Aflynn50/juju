@@ -1,5 +1,5 @@
-(dashboard.md)=
-# `dashboard`
+(command-juju-dashboard)=
+# Command `juju dashboard`
 
 ## Summary
 Print the Juju Dashboard URL, or open the Juju Dashboard in the default browser.

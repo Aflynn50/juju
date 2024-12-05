@@ -1,5 +1,5 @@
-(debug-log.md)=
-# `debug-log`
+(command-juju-debug-log)=
+# Command `juju debug-log`
 > See also: [status](#status), [ssh](#ssh)
 
 ## Summary

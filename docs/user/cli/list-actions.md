@@ -1,5 +1,5 @@
-(list-actions.md)=
-# `list-actions`
+(command-juju-list-actions)=
+# Command `juju list-actions`
 > See also: [run](#run), [show-action](#show-action)
 **Alias:** actions
 

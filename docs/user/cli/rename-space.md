@@ -1,5 +1,5 @@
-(rename-space.md)=
-# `rename-space`
+(command-juju-rename-space)=
+# Command `juju rename-space`
 > See also: [add-space](#add-space), [spaces](#spaces), [reload-spaces](#reload-spaces), [remove-space](#remove-space), [show-space](#show-space)
 
 ## Summary

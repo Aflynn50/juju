@@ -1,5 +1,5 @@
-(models.md)=
-# `models`
+(command-juju-models)=
+# Command `juju models`
 > See also: [add-model](#add-model)
 
 ## Summary

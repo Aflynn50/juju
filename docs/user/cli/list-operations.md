@@ -1,5 +1,5 @@
-(list-operations.md)=
-# `list-operations`
+(command-juju-list-operations)=
+# Command `juju list-operations`
 > See also: [run](#run), [show-operation](#show-operation), [show-task](#show-task)
 **Alias:** operations
 

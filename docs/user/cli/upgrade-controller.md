@@ -1,5 +1,5 @@
-(upgrade-controller.md)=
-# `upgrade-controller`
+(command-juju-upgrade-controller)=
+# Command `juju upgrade-controller`
 > See also: [upgrade-model](#upgrade-model)
 
 ## Summary

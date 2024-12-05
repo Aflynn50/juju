@@ -1,5 +1,5 @@
-(remove-offer.md)=
-# `remove-offer`
+(command-juju-remove-offer)=
+# Command `juju remove-offer`
 > See also: [find-offers](#find-offers), [offer](#offer)
 
 ## Summary

@@ -1,5 +1,5 @@
-(list-secret-backends.md)=
-# `list-secret-backends`
+(command-juju-list-secret-backends)=
+# Command `juju list-secret-backends`
 > See also: [add-secret-backend](#add-secret-backend), [remove-secret-backend](#remove-secret-backend), [show-secret-backend](#show-secret-backend), [update-secret-backend](#update-secret-backend)
 **Alias:** secret-backends
 

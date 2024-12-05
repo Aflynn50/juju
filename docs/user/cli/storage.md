@@ -1,5 +1,5 @@
-(storage.md)=
-# `storage`
+(command-juju-storage)=
+# Command `juju storage`
 > See also: [show-storage](#show-storage), [add-storage](#add-storage), [remove-storage](#remove-storage)
 
 ## Summary

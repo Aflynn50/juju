@@ -1,5 +1,5 @@
-(grant-secret.md)=
-# `grant-secret`
+(command-juju-grant-secret)=
+# Command `juju grant-secret`
 
 ## Summary
 Grant access to a secret.

@@ -1,5 +1,5 @@
-(destroy-model.md)=
-# `destroy-model`
+(command-juju-destroy-model)=
+# Command `juju destroy-model`
 > See also: [destroy-controller](#destroy-controller)
 
 ## Summary

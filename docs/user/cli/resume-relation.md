@@ -1,5 +1,5 @@
-(resume-relation.md)=
-# `resume-relation`
+(command-juju-resume-relation)=
+# Command `juju resume-relation`
 > See also: [integrate](#integrate), [offers](#offers), [remove-relation](#remove-relation), [suspend-relation](#suspend-relation)
 
 ## Summary

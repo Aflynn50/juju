@@ -1,5 +1,5 @@
-(list-payloads.md)=
-# `list-payloads`
+(command-juju-list-payloads)=
+# Command `juju list-payloads`
 **Alias:** payloads
 
 ## Summary

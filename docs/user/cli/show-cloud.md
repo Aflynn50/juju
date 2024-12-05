@@ -1,5 +1,5 @@
-(show-cloud.md)=
-# `show-cloud`
+(command-juju-show-cloud)=
+# Command `juju show-cloud`
 > See also: [clouds](#clouds), [add-cloud](#add-cloud), [update-cloud](#update-cloud)
 
 ## Summary

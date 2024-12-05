@@ -1,5 +1,5 @@
-(update-secret.md)=
-# `update-secret`
+(command-juju-update-secret)=
+# Command `juju update-secret`
 
 ## Summary
 Update an existing secret.

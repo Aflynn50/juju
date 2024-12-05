@@ -1,5 +1,5 @@
-(status.md)=
-# `status`
+(command-juju-status)=
+# Command `juju status`
 > See also: [machines](#machines), [show-model](#show-model), [show-status-log](#show-status-log), [storage](#storage)
 
 ## Summary

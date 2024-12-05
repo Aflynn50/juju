@@ -1,5 +1,5 @@
-(add-space.md)=
-# `add-space`
+(command-juju-add-space)=
+# Command `juju add-space`
 > See also: [spaces](#spaces), [remove-space](#remove-space)
 
 ## Summary

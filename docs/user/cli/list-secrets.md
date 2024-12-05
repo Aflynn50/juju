@@ -1,5 +1,5 @@
-(list-secrets.md)=
-# `list-secrets`
+(command-juju-list-secrets)=
+# Command `juju list-secrets`
 > See also: [add-secret](#add-secret), [remove-secret](#remove-secret), [show-secret](#show-secret), [update-secret](#update-secret)
 **Alias:** secrets
 

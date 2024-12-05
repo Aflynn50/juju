@@ -1,5 +1,5 @@
-(agreements.md)=
-# `agreements`
+(command-juju-agreements)=
+# Command `juju agreements`
 > See also: [agree](#agree)
 
 ## Summary

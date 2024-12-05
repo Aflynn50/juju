@@ -1,5 +1,5 @@
-(logout.md)=
-# `logout`
+(command-juju-logout)=
+# Command `juju logout`
 > See also: [change-user-password](#change-user-password), [login](#login)
 
 ## Summary

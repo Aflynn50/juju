@@ -1,5 +1,5 @@
-(exec.md)=
-# `exec`
+(command-juju-exec)=
+# Command `juju exec`
 > See also: [run](#run), [ssh](#ssh)
 
 ## Summary

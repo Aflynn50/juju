@@ -1,5 +1,5 @@
-(disabled-commands.md)=
-# `disabled-commands`
+(command-juju-disabled-commands)=
+# Command `juju disabled-commands`
 > See also: [disable-command](#disable-command), [enable-command](#enable-command)
 
 ## Summary

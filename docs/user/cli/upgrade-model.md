@@ -1,5 +1,5 @@
-(upgrade-model.md)=
-# `upgrade-model`
+(command-juju-upgrade-model)=
+# Command `juju upgrade-model`
 > See also: [sync-agent-binary](#sync-agent-binary)
 
 ## Summary

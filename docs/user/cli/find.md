@@ -1,5 +1,5 @@
-(find.md)=
-# `find`
+(command-juju-find)=
+# Command `juju find`
 > See also: [info](#info), [download](#download)
 
 ## Summary

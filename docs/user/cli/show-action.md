@@ -1,5 +1,5 @@
-(show-action.md)=
-# `show-action`
+(command-juju-show-action)=
+# Command `juju show-action`
 > See also: [actions](#actions), [run](#run)
 
 ## Summary

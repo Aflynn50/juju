@@ -1,5 +1,5 @@
-(show-status-log.md)=
-# `show-status-log`
+(command-juju-show-status-log)=
+# Command `juju show-status-log`
 > See also: [status](#status)
 
 ## Summary

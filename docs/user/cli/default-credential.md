@@ -1,5 +1,5 @@
-(default-credential.md)=
-# `default-credential`
+(command-juju-default-credential)=
+# Command `juju default-credential`
 > See also: [credentials](#credentials), [add-credential](#add-credential), [remove-credential](#remove-credential), [autoload-credentials](#autoload-credentials)
 
 ## Summary

@@ -1,5 +1,5 @@
-(login.md)=
-# `login`
+(command-juju-login)=
+# Command `juju login`
 > See also: [disable-user](#disable-user), [enable-user](#enable-user), [logout](#logout), [register](#register), [unregister](#unregister)
 
 ## Summary

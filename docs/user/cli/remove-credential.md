@@ -1,5 +1,5 @@
-(remove-credential.md)=
-# `remove-credential`
+(command-juju-remove-credential)=
+# Command `juju remove-credential`
 > See also: [add-credential](#add-credential), [autoload-credentials](#autoload-credentials), [credentials](#credentials), [default-credential](#default-credential), [set-credential](#set-credential), [update-credential](#update-credential)
 
 ## Summary

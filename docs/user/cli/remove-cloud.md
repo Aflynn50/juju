@@ -1,5 +1,5 @@
-(remove-cloud.md)=
-# `remove-cloud`
+(command-juju-remove-cloud)=
+# Command `juju remove-cloud`
 > See also: [add-cloud](#add-cloud), [update-cloud](#update-cloud), [clouds](#clouds)
 
 ## Summary

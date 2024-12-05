@@ -1,5 +1,5 @@
-(show-operation.md)=
-# `show-operation`
+(command-juju-show-operation)=
+# Command `juju show-operation`
 > See also: [run](#run), [operations](#operations), [show-task](#show-task)
 
 ## Summary

@@ -1,5 +1,5 @@
-(update-secret-backend.md)=
-# `update-secret-backend`
+(command-juju-update-secret-backend)=
+# Command `juju update-secret-backend`
 > See also: [add-secret-backend](#add-secret-backend), [secret-backends](#secret-backends), [remove-secret-backend](#remove-secret-backend), [show-secret-backend](#show-secret-backend)
 
 ## Summary

@@ -1,5 +1,5 @@
-(default-region.md)=
-# `default-region`
+(command-juju-default-region)=
+# Command `juju default-region`
 > See also: [add-credential](#add-credential)
 
 ## Summary

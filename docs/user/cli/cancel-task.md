@@ -1,5 +1,5 @@
-(cancel-task.md)=
-# `cancel-task`
+(command-juju-cancel-task)=
+# Command `juju cancel-task`
 > See also: [show-task](#show-task)
 
 ## Summary

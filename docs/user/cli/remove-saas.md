@@ -1,5 +1,5 @@
-(remove-saas.md)=
-# `remove-saas`
+(command-juju-remove-saas)=
+# Command `juju remove-saas`
 > See also: [consume](#consume), [offer](#offer)
 
 ## Summary

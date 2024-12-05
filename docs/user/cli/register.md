@@ -1,5 +1,5 @@
-(register.md)=
-# `register`
+(command-juju-register)=
+# Command `juju register`
 > See also: [add-user](#add-user), [change-user-password](#change-user-password), [unregister](#unregister)
 
 ## Summary

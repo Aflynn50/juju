@@ -1,5 +1,5 @@
-(add-cloud.md)=
-# `add-cloud`
+(command-juju-add-cloud)=
+# Command `juju add-cloud`
 > See also: [clouds](#clouds), [update-cloud](#update-cloud), [remove-cloud](#remove-cloud), [update-credential](#update-credential)
 
 ## Summary

@@ -1,5 +1,5 @@
-(attach-resource.md)=
-# `attach-resource`
+(command-juju-attach-resource)=
+# Command `juju attach-resource`
 > See also: [resources](#resources), [charm-resources](#charm-resources)
 
 ## Summary

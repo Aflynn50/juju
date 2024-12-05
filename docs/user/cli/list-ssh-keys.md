@@ -1,5 +1,5 @@
-(list-ssh-keys.md)=
-# `list-ssh-keys`
+(command-juju-list-ssh-keys)=
+# Command `juju list-ssh-keys`
 > See also: [add-ssh-key](#add-ssh-key), [remove-ssh-key](#remove-ssh-key)
 **Alias:** ssh-keys
 

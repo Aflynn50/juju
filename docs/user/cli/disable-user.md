@@ -1,5 +1,5 @@
-(disable-user.md)=
-# `disable-user`
+(command-juju-disable-user)=
+# Command `juju disable-user`
 > See also: [users](#users), [enable-user](#enable-user), [login](#login)
 
 ## Summary

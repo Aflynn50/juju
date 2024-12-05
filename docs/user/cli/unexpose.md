@@ -1,5 +1,5 @@
-(unexpose.md)=
-# `unexpose`
+(command-juju-unexpose)=
+# Command `juju unexpose`
 > See also: [expose](#expose)
 
 ## Summary

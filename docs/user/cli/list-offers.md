@@ -1,5 +1,5 @@
-(list-offers.md)=
-# `list-offers`
+(command-juju-list-offers)=
+# Command `juju list-offers`
 > See also: [find-offers](#find-offers), [show-offer](#show-offer)
 **Alias:** offers
 

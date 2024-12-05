@@ -1,5 +1,5 @@
-(offers.md)=
-# `offers`
+(command-juju-offers)=
+# Command `juju offers`
 > See also: [find-offers](#find-offers), [show-offer](#show-offer)
 
 ## Summary

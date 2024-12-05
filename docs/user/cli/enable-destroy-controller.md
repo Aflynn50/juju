@@ -1,5 +1,5 @@
-(enable-destroy-controller.md)=
-# `enable-destroy-controller`
+(command-juju-enable-destroy-controller)=
+# Command `juju enable-destroy-controller`
 > See also: [disable-command](#disable-command), [disabled-commands](#disabled-commands), [enable-command](#enable-command)
 
 ## Summary

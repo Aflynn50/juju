@@ -1,5 +1,5 @@
-(detach-storage.md)=
-# `detach-storage`
+(command-juju-detach-storage)=
+# Command `juju detach-storage`
 > See also: [storage](#storage), [attach-storage](#attach-storage)
 
 ## Summary

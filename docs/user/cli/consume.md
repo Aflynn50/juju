@@ -1,5 +1,5 @@
-(consume.md)=
-# `consume`
+(command-juju-consume)=
+# Command `juju consume`
 > See also: [integrate](#integrate), [offer](#offer), [remove-saas](#remove-saas)
 
 ## Summary

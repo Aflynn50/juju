@@ -1,5 +1,5 @@
-(migrate.md)=
-# `migrate`
+(command-juju-migrate)=
+# Command `juju migrate`
 > See also: [login](#login), [controllers](#controllers), [status](#status)
 
 ## Summary

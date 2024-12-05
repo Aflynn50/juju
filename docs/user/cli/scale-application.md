@@ -1,5 +1,5 @@
-(scale-application.md)=
-# `scale-application`
+(command-juju-scale-application)=
+# Command `juju scale-application`
 > See also: [remove-application](#remove-application), [add-unit](#add-unit), [remove-unit](#remove-unit)
 
 ## Summary

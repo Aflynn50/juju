@@ -1,5 +1,5 @@
-(revoke.md)=
-# `revoke`
+(command-juju-revoke)=
+# Command `juju revoke`
 > See also: [grant](#grant)
 
 ## Summary

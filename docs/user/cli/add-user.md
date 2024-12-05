@@ -1,5 +1,5 @@
-(add-user.md)=
-# `add-user`
+(command-juju-add-user)=
+# Command `juju add-user`
 > See also: [register](#register), [grant](#grant), [users](#users), [show-user](#show-user), [disable-user](#disable-user), [enable-user](#enable-user), [change-user-password](#change-user-password), [remove-user](#remove-user)
 
 ## Summary

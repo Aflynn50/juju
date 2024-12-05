@@ -1,5 +1,5 @@
-(add-credential.md)=
-# `add-credential`
+(command-juju-add-credential)=
+# Command `juju add-credential`
 > See also: [credentials](#credentials), [remove-credential](#remove-credential), [update-credential](#update-credential), [default-credential](#default-credential), [default-region](#default-region), [autoload-credentials](#autoload-credentials)
 
 ## Summary
