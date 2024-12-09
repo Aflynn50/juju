@@ -640,11 +640,8 @@ func (s *resourceSuite) TestSetUnitResourceNotYetSupplied(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Arrange) failed to populate DB: %v", errors.ErrorStack(err)))
 
 	// Act set supplied by with application type
-	result, err := s.state.SetUnitResource(context.Background(), resource.SetUnitResourceArgs{
-		ResourceUUID:    coreresources.UUID(resID),
-		UnitUUID:        unit.UUID(s.constants.fakeUnitUUID1),
-		RetrievedBy:     "app1",
-		RetrievedByType: "application",
+	result, err := s.state.SetUnitResource(context.Background(), unit.UUID(s.constants.fakeUnitUUID1), resource.SetResourceArgs{
+		ResourceUUID: coreresources.UUID(resID),
 	})
 	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute SetUnitResource: %v", errors.ErrorStack(err)))
 

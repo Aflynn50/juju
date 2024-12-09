@@ -4,7 +4,6 @@
 package resource
 
 import (
-	"io"
 	"time"
 
 	"github.com/juju/juju/core/application"
@@ -117,32 +116,6 @@ type UnitResources struct {
 type GetApplicationResourceIDArgs struct {
 	ApplicationID application.ID
 	Name          string
-}
-
-// SetResourceArgs holds the arguments for the SetResource method.
-type SetResourceArgs struct {
-	ApplicationID  application.ID
-	SuppliedBy     string
-	SuppliedByType RetrievedByType
-	Resource       charmresource.Resource
-	Reader         io.Reader
-	Increment      IncrementCharmModifiedVersionType
-}
-
-// SetUnitResourceArgs holds the arguments for the SetUnitResource method.
-type SetUnitResourceArgs struct {
-	ResourceUUID    coreresource.UUID
-	RetrievedBy     string
-	RetrievedByType RetrievedByType
-	UnitUUID        unit.UUID
-}
-
-// SetUnitResourceResult is the result data from setting a unit's resource.
-type SetUnitResourceResult struct {
-	// UUID uniquely identifies the unit resource within the model.
-	UUID coreresource.UUID
-	// Timestamp indicates when the unit started using resource.
-	Timestamp time.Time
 }
 
 // SetRepositoryResourcesArgs holds the arguments for the

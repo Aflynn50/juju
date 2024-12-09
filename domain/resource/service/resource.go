@@ -5,17 +5,17 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	coreapplication "github.com/juju/juju/core/application"
 	"github.com/juju/juju/core/logger"
 	coreresource "github.com/juju/juju/core/resource"
-	"github.com/juju/juju/core/resource/store"
+	coreresourcestore "github.com/juju/juju/core/resource/store"
 	coreunit "github.com/juju/juju/core/unit"
 	"github.com/juju/juju/domain/resource"
 	resourceerrors "github.com/juju/juju/domain/resource/errors"
 	charmresource "github.com/juju/juju/internal/charm/resource"
+	"github.com/juju/juju/internal/errors"
 )
 
 // State describes retrieval and persistence methods for resource.
@@ -38,18 +38,19 @@ type State interface {
 	// GetResource returns the identified resource.
 	GetResource(ctx context.Context, resourceUUID coreresource.UUID) (resource.Resource, error)
 
-	// SetResource adds the resource to blob storage and updates the metadata.
-	SetResource(ctx context.Context, config resource.SetResourceArgs) (resource.Resource, error)
+	// LinkStoredResource links a storageUUID to a resourceUUID
+	LinkStoredResource(ctx context.Context, resourceUUID coreresource.UUID, storageUUID coreresourcestore.ID) (resource.Resource, error)
+
+	// LinkStoredResourceAndMarkChanged links a storageUUID to a resourceUUID
+	// and marks on the application that something has changed.
+	LinkStoredResourceAndMarkChanged(ctx context.Context, resourceUUID coreresource.UUID, storageUUID coreresourcestore.ID) (resource.Resource, error)
 
 	// SetUnitResource sets the resource metadata for a specific unit.
-	SetUnitResource(ctx context.Context, config resource.SetUnitResourceArgs) (resource.SetUnitResourceResult, error)
+	SetUnitResource(ctx context.Context, resourceUUID coreresource.UUID, unitUUID coreunit.UUID) (resource.Resource, error)
 
-	// OpenApplicationResource returns the metadata for an application's resource.
-	OpenApplicationResource(ctx context.Context, resourceUUID coreresource.UUID) (resource.Resource, error)
-
-	// OpenUnitResource returns the metadata for a resource. A unit resource
-	// is created to track the given unit and which resource its using.
-	OpenUnitResource(ctx context.Context, resourceUUID coreresource.UUID, unitID coreunit.UUID) (resource.Resource, error)
+	// SetApplicationResource sets the resource application metadata an
+	// application's resource.
+	SetApplicationResource(ctx context.Context, resourceUUID coreresource.UUID, applicationID coreapplication.ID) (resource.Resource, error)
 
 	// SetRepositoryResources sets the "polled" resource for the
 	// application to the provided values. The current data for this
@@ -60,7 +61,7 @@ type State interface {
 type ResourceStoreGetter interface {
 	// GetResourceStore returns the appropriate ResourceStore for the
 	// given resource type.
-	GetResourceStore(context.Context, charmresource.Type) (store.ResourceStore, error)
+	GetResourceStore(context.Context, charmresource.Type) (coreresourcestore.ResourceStore, error)
 }
 
 // Service provides the API for working with resources.
@@ -133,7 +134,7 @@ func (s *Service) GetApplicationResourceID(
 	args resource.GetApplicationResourceIDArgs,
 ) (coreresource.UUID, error) {
 	if err := args.ApplicationID.Validate(); err != nil {
-		return "", fmt.Errorf("application id: %w", err)
+		return "", errors.Errorf("application id: %w", err)
 	}
 	if args.Name == "" {
 		return "", resourceerrors.ResourceNameNotValid
@@ -158,7 +159,7 @@ func (s *Service) ListResources(
 	applicationID coreapplication.ID,
 ) (resource.ApplicationResources, error) {
 	if err := applicationID.Validate(); err != nil {
-		return resource.ApplicationResources{}, fmt.Errorf("application id: %w", err)
+		return resource.ApplicationResources{}, errors.Errorf("application id: %w", err)
 	}
 	return s.st.ListResources(ctx, applicationID)
 }
@@ -173,11 +174,12 @@ func (s *Service) GetResource(
 	resourceUUID coreresource.UUID,
 ) (resource.Resource, error) {
 	if err := resourceUUID.Validate(); err != nil {
-		return resource.Resource{}, fmt.Errorf("application id: %w", err)
+		return resource.Resource{}, errors.Errorf("application id: %w", err)
 	}
 	return s.st.GetResource(ctx, resourceUUID)
 }
 
+<<<<<<< HEAD
 // SetResource adds the application resource to blob storage and updates the metadata.
 //
 // The following error types can be expected to be returned:
@@ -188,48 +190,116 @@ func (s *Service) GetResource(
 //   - [resourceerrors.ApplicationNotFound] if the specified application does
 //     not exist.
 func (s *Service) SetResource(
+=======
+// StoreResource adds the application resource to blob storage and updates the
+// metadata. It also sets the retrieved_by field.
+func (s *Service) StoreResource(
+>>>>>>> f439b76e1a (WIP)
 	ctx context.Context,
-	args resource.SetResourceArgs,
+	applicationID coreapplication.ID,
+	retrievedBy string,
+	retrievedByType resource.RetrievedByType,
+	resourceUUID coreresource.UUID,
+	reader io.Reader,
 ) (resource.Resource, error) {
-	if err := args.ApplicationID.Validate(); err != nil {
-		return resource.Resource{}, fmt.Errorf("application id: %w", err)
+	if err := applicationID.Validate(); err != nil {
+		return resource.Resource{}, errors.Errorf("application id: %w", err)
 	}
-	if args.SuppliedBy != "" && args.SuppliedByType == resource.Unknown {
+	if retrievedBy != "" && retrievedByType == resource.Unknown {
 		return resource.Resource{},
-			fmt.Errorf("RetrievedByType cannot be unknown if RetrievedBy set: %w", resourceerrors.ArgumentNotValid)
+			errors.Errorf("RetrievedByType cannot be unknown if RetrievedBy set: %w", resourceerrors.ArgumentNotValid)
 	}
-	if err := args.Resource.Validate(); err != nil {
-		return resource.Resource{}, fmt.Errorf("resource: %w", err)
+	if err := resourceUUID.Validate(); err != nil {
+		return resource.Resource{}, errors.Errorf("resource uuid: %w", err)
 	}
-	return s.st.SetResource(ctx, args)
+
+	res, err := s.st.GetResource(ctx, resourceUUID)
+	if err != nil {
+		return resource.Resource{}, err
+	}
+
+	store, err := s.resourceStoreGetter.GetResourceStore(ctx, res.Type)
+	if err != nil {
+		return resource.Resource{}, errors.Errorf("getting resource store for %s: %w", res.Type.String(), err)
+	}
+
+	storageUUID, err := store.Put(ctx, res.UUID.String(), reader, res.Size, coreresourcestore.NewFingerprint(res.Fingerprint.Fingerprint))
+	if err != nil {
+		return resource.Resource{}, errors.Errorf("getting resource from store: %w", err)
+	}
+	err = s.st.LinkStoredResource(ctx, resourceUUID, storageUUID, retrievedBy, retrievedByType)
+	return res, err
 }
 
-// SetUnitResource sets the resource metadata for a specific unit.
+func (s *Service) StoreResourceAndMarkChanged(
+	ctx context.Context,
+	ApplicationID coreapplication.ID,
+	SuppliedBy string,
+	SuppliedByType resource.RetrievedByType,
+	Resource coreresource.UUID,
+	Reader io.Reader,
+) {
+	//TODO Shouldn't this be a method on the application service really?
+}
+
+// OpenResource returns the details of and a reader for
+// the resource.
 //
 // The following error types can be expected to be returned:
+<<<<<<< HEAD
 //   - [coreerrors.NotValid] is returned if the unit UUID is not valid.
 //   - [coreerrors.NotValid] is returned if the resource UUID is not valid.
 //   - [resourceerrors.ArgumentNotValid] is returned if the RetrievedByType is unknown while
 //     RetrievedBy has a value.
 //   - [resourceerrors.ResourceNotFound] if the specified resource doesn't exist
 //   - [resourceerrors.UnitNotFound] if the specified unit doesn't exist
-func (s *Service) SetUnitResource(
+=======
+//   - [resourceerrors.ResourceNotFound] if the specified resource does
+//     not exist.
+func (s *Service) OpenResource(
 	ctx context.Context,
-	args resource.SetUnitResourceArgs,
-) (resource.SetUnitResourceResult, error) {
-	if err := args.UnitUUID.Validate(); err != nil {
-		return resource.SetUnitResourceResult{}, fmt.Errorf("unit id: %w", err)
+	resourceUUID coreresource.UUID,
+) (resource.Resource, io.ReadCloser, error) {
+	if err := resourceUUID.Validate(); err != nil {
+		return resource.Resource{}, nil, errors.Errorf("resource id: %w", err)
 	}
-	if err := args.ResourceUUID.Validate(); err != nil {
-		return resource.SetUnitResourceResult{}, fmt.Errorf("resource id: %w", err)
+
+	res, err := s.st.GetResource(ctx, resourceUUID)
+	if err != nil {
+		return resource.Resource{}, nil, err
 	}
-	if args.RetrievedBy != "" && args.RetrievedByType == resource.Unknown {
-		return resource.SetUnitResourceResult{},
-			fmt.Errorf("RetrievedByType cannot be unknown if RetrievedBy set: %w", resourceerrors.ArgumentNotValid)
+
+	store, err := s.resourceStoreGetter.GetResourceStore(ctx, res.Type)
+	if err != nil {
+		return resource.Resource{}, nil, errors.Errorf("getting resource store for %s: %w", res.Type.String(), err)
 	}
-	return s.st.SetUnitResource(ctx, args)
+
+	reader, size, err := store.Get(ctx, res.UUID.String())
+	if err != nil {
+		return resource.Resource{}, nil, errors.Errorf("getting resource from store: %w", err)
+	}
+
+	if size != res.Size {
+		return resource.Resource{}, nil, errors.Errorf("retrived resource size does not match expected resource size (%d != %d)", size, res.Size)
+	}
+	return res, reader, nil
 }
 
+// SetUnitResource sets the unit as using the resource.
+>>>>>>> f439b76e1a (WIP)
+func (s *Service) SetUnitResource(
+	ctx context.Context,
+	resourceUUID coreresource.UUID,
+	unitUUID coreunit.UUID,
+) (resource.Resource, error) {
+	res, err := s.st.SetUnitResource(ctx, resourceUUID, unitUUID)
+	if err != nil {
+		return resource.Resource{}, errors.Errorf("recording resource for unit: %w")
+	}
+	return res, nil
+}
+
+<<<<<<< HEAD
 // OpenApplicationResource returns the details of and a reader for the resource.
 //
 // The following error types can be expected to be returned:
@@ -237,12 +307,19 @@ func (s *Service) SetUnitResource(
 //   - [resourceerrors.ResourceNotFound] if the specified resource does
 //     not exist.
 func (s *Service) OpenApplicationResource(
+=======
+// SetApplicationResource sets the application as using the resource.
+func (s *Service) SetApplicationResource(
+>>>>>>> f439b76e1a (WIP)
 	ctx context.Context,
 	resourceUUID coreresource.UUID,
-) (resource.Resource, io.ReadCloser, error) {
-	if err := resourceUUID.Validate(); err != nil {
-		return resource.Resource{}, nil, fmt.Errorf("resource id: %w", err)
+	applicationUUID coreapplication.ID,
+) (resource.Resource, error) {
+	res, err := s.st.SetApplicationResource(ctx, resourceUUID, applicationUUID)
+	if err != nil {
+		return resource.Resource{}, errors.Errorf("recording resource for application: %w")
 	}
+<<<<<<< HEAD
 	res, err := s.st.OpenApplicationResource(ctx, resourceUUID)
 	return res, &noopReadCloser{}, err
 }
@@ -272,6 +349,9 @@ func (s *Service) OpenUnitResource(
 	}
 	res, err := s.st.OpenUnitResource(ctx, resourceUUID, unitID)
 	return res, &noopReadCloser{}, err
+=======
+	return res, nil
+>>>>>>> f439b76e1a (WIP)
 }
 
 // SetRepositoryResources sets the "polled" resource for the application to
@@ -289,29 +369,18 @@ func (s *Service) SetRepositoryResources(
 	args resource.SetRepositoryResourcesArgs,
 ) error {
 	if err := args.ApplicationID.Validate(); err != nil {
-		return fmt.Errorf("application id: %w", err)
+		return errors.Errorf("application id: %w", err)
 	}
 	if len(args.Info) == 0 {
-		return fmt.Errorf("empty Info: %w", resourceerrors.ArgumentNotValid)
+		return errors.Errorf("empty Info: %w", resourceerrors.ArgumentNotValid)
 	}
 	for _, info := range args.Info {
 		if err := info.Validate(); err != nil {
-			return fmt.Errorf("resource: %w", err)
+			return errors.Errorf("resource: %w", err)
 		}
 	}
 	if args.LastPolled.IsZero() {
-		return fmt.Errorf("zero LastPolled: %w", resourceerrors.ArgumentNotValid)
+		return errors.Errorf("zero LastPolled: %w", resourceerrors.ArgumentNotValid)
 	}
 	return s.st.SetRepositoryResources(ctx, args)
-}
-
-// TODO: remove me once OpenApplicationResource and OpenUnitResource implemented.
-type noopReadCloser struct{}
-
-func (noopReadCloser) Read(p []byte) (n int, err error) {
-	return 0, nil
-}
-
-func (noopReadCloser) Close() error {
-	return nil
 }
