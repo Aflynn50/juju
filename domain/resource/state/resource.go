@@ -18,6 +18,7 @@ import (
 	"github.com/juju/juju/core/database"
 	"github.com/juju/juju/core/logger"
 	coreresource "github.com/juju/juju/core/resource"
+	coreresourcestore "github.com/juju/juju/core/resource/store"
 	coreunit "github.com/juju/juju/core/unit"
 	"github.com/juju/juju/domain"
 	"github.com/juju/juju/domain/resource"
@@ -340,14 +341,21 @@ WHERE unit_resource.resource_uuid = $resourceIdentity.uuid`
 				return errors.Capture(err)
 			}
 
+			r, err := res.toResource()
+			if err != nil {
+				return errors.Capture(err)
+			}
 			// Add each resource.
-			result.Resources = append(result.Resources, res.toResource())
+			result.Resources = append(result.Resources, r)
 
 			// Add the charm resource or an empty one,
 			// depending ons polled status.
 			charmRes := charmresource.Resource{}
 			if hasBeenPolled {
-				charmRes = res.toCharmResource()
+				charmRes, err = res.toCharmResource()
+				if err != nil {
+					return errors.Capture(err)
+				}
 			}
 			result.RepositoryResources = append(result.RepositoryResources, charmRes)
 
@@ -357,7 +365,11 @@ WHERE unit_resource.resource_uuid = $resourceIdentity.uuid`
 				if !ok {
 					unitRes = resource.UnitResources{ID: coreunit.UUID(unit.UnitUUID)}
 				}
-				unitRes.Resources = append(unitRes.Resources, res.toResource())
+				ur, err := res.toResource()
+				if err != nil {
+					return errors.Capture(err)
+				}
+				unitRes.Resources = append(unitRes.Resources, ur)
 				resByUnit[coreunit.UUID(unit.UnitUUID)] = unitRes
 			}
 		}
@@ -407,112 +419,529 @@ WHERE uuid = $resourceIdentity.uuid`,
 		return resource.Resource{}, errors.Capture(err)
 	}
 
-	return resourceOutput.toResource(), nil
+	return resourceOutput.toResource()
 }
 
-// SetResource adds the resource to blob storage and updates the metadata.
-func (st *State) SetResource(
+// StoreResource records a stored resource along with who retrieved it.
+// Returns [resourceerrors.ResourceNotFound] if the resource UUID cannot be found.
+// Returns [resourceerrors.StoredResourceNotFound] if the stored resource at the
+// storageID cannot be found.
+// Returns [resourceerrors.ResourceAlreadyStored] if the resource is already
+// associated with a stored resource blob.
+// Returns [resourceerrors.RetrievedByTypeNotValid] if the retrieved by type is
+// invalid.
+func (st *State) StoreResource(
 	ctx context.Context,
-	config resource.SetResourceArgs,
-) (resource.Resource, error) {
-	return resource.Resource{}, nil
-}
-
-// SetUnitResource sets the resource metadata for a specific unit.
-// Returns [resourceerrors.UnitNotFound] if the unit id doesn't belong to an existing unit.
-// Returns [resourceerrors.ResourceNotFound] if the resource id doesn't belong to an existing resource.
-func (st *State) SetUnitResource(
-	ctx context.Context,
-	config resource.SetUnitResourceArgs,
-) (resource.SetUnitResourceResult, error) {
+	resourceUUID coreresource.UUID,
+	storageID coreresourcestore.ID,
+	retrievedBy string,
+	retrievedByType resource.RetrievedByType,
+	incrementCharmModifiedVersion bool,
+) error {
 	db, err := st.DB()
 	if err != nil {
-		return resource.SetUnitResourceResult{}, errors.Capture(err)
+		return errors.Capture(err)
 	}
 
-	// Prepare statement to check if the unit/resource is not already there.
-	unitResourceInput := unitResource{
-		ResourceUUID: config.ResourceUUID.String(),
-		UnitUUID:     config.UnitUUID.String(),
-		AddedAt:      st.clock.Now(),
-	}
-	checkUnitResourceQuery := `
-SELECT &unitResource.* FROM unit_resource 
-WHERE unit_resource.resource_uuid = $unitResource.resource_uuid 
-AND unit_resource.unit_uuid = $unitResource.unit_uuid`
-	checkUnitResourceStmt, err := st.Prepare(checkUnitResourceQuery, unitResourceInput)
+	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+		kind, err := st.getResourceType(ctx, tx, resourceUUID)
+		if err != nil {
+			return errors.Errorf("getting resource type: %w", err)
+		}
+
+		switch kind {
+		case charmresource.TypeFile:
+			err = st.insertFileResource(ctx, tx, resourceUUID, storageID)
+			if err != nil {
+				return errors.Errorf("inserting stored file resource information: %w", err)
+			}
+		case charmresource.TypeContainerImage:
+			err = st.insertImageResource(ctx, tx, resourceUUID, storageID)
+			if err != nil {
+				return errors.Errorf("inserting stored container image resource information: %w", err)
+			}
+		default:
+			return errors.Errorf("unknown resource type: %q", kind.String())
+		}
+		if err != nil {
+			return errors.Capture(err)
+		}
+
+		if retrievedBy != "" {
+			err := st.insertRetrievedBy(ctx, tx, resourceUUID, retrievedBy, retrievedByType)
+			if err != nil {
+				return errors.Errorf("inserting retrieval information for resource %s: %w", resourceUUID, err)
+			}
+		}
+
+		if incrementCharmModifiedVersion {
+			err := st.incrementCharmModifiedVersion(ctx, tx, resourceUUID)
+			if err != nil {
+				return errors.Errorf("inserting retrieval information for resource %s: %w", resourceUUID, err)
+			}
+		}
+
+		return nil
+	})
 	if err != nil {
-		return resource.SetUnitResourceResult{}, errors.Capture(err)
+		return errors.Capture(err)
 	}
+	return nil
+}
 
-	// Prepare statement to check that UnitUUID is valid UUID.
-	unitUUID := unitNameAndUUID{UnitUUID: config.UnitUUID}
-	checkValidUnitQuery := `
-SELECT &unitNameAndUUID.uuid 
-FROM unit 
-WHERE uuid = $unitNameAndUUID.uuid`
-	checkValidUnitStmt, err := st.Prepare(checkValidUnitQuery, unitUUID)
+// getResourceType finds the type of the given resource from the resource table.
+func (st *State) getResourceType(
+	ctx context.Context,
+	tx *sqlair.TX,
+	resourceUUID coreresource.UUID,
+) (charmresource.Type, error) {
+	resKind := resourceKind{
+		UUID: resourceUUID.String(),
+	}
+	getResourceType, err := st.Prepare(`
+SELECT crk.name AS &resourceKind.name
+FROM resource AS r
+JOIN application_resource AS ar ON r.uuid = ar.resource_uuid
+JOIN charm_resource AS cr ON r.charm_uuid = cr.charm_uuid AND r.charm_resource_name = cr.name
+JOIN charm_resource_kind AS crk ON cr.kind_id = crk.id
+WHERE r.uuid = $resourceKind.uuid
+`, resKind)
 	if err != nil {
-		return resource.SetUnitResourceResult{}, errors.Capture(err)
+		return 0, errors.Capture(err)
 	}
 
-	// Prepare statement to check that resourceID is valid UUID.
-	resourceUUID := resourceIdentity{UUID: config.ResourceUUID.String()}
-	checkValidResourceQuery := `
-SELECT &resourceIdentity.uuid
-FROM resource
-WHERE uuid = $resourceIdentity.uuid`
-	checkValidResourceStmt, err := st.Prepare(checkValidResourceQuery, resourceUUID)
+	err = tx.Query(ctx, getResourceType, resKind).Get(&resKind)
+	if errors.Is(err, sqlair.ErrNoRows) {
+		return 0, resourceerrors.ResourceNotFound
+	} else if err != nil {
+		return 0, errors.Capture(err)
+	}
+
+	kind, err := charmresource.ParseType(resKind.Name)
 	if err != nil {
-		return resource.SetUnitResourceResult{}, errors.Capture(err)
+		return 0, errors.Errorf("parsing resource kind: %w", err)
+	}
+	return kind, err
+}
+
+// insertFileResource checks that the storage ID corresponds to stored object
+// store metadata and then records that the resource is stored at the provided
+// storage ID.
+func (st *State) insertFileResource(
+	ctx context.Context,
+	tx *sqlair.TX,
+	resourceUUID coreresource.UUID,
+	storageID coreresourcestore.ID,
+) error {
+	// Get the object store UUID of the stored resource blob.
+	if !storageID.IsObjectStoreUUID() {
+		return errors.Errorf("cannot insert file resource that is not stored in the object store")
+	}
+	uuid, err := storageID.ObjectStoreUUID()
+	if err != nil {
+		return errors.Capture(err)
 	}
 
-	// Prepare statement to verify if the application resource is already
-	// retrieved.
+	// Check the resource blob is stored in the object store.
+	storedResource := storedFileResource{
+		ResourceUUID:    resourceUUID.String(),
+		ObjectStoreUUID: uuid.String(),
+	}
+	checkObjectStoreMetadataStmt, err := st.Prepare(`
+SELECT uuid AS &storedFileResource.store_uuid
+FROM object_store_metadata
+WHERE uuid = $storedFileResource.store_uuid
+`, storedResource)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	err = tx.Query(ctx, checkObjectStoreMetadataStmt, storedResource).Get(&storedResource)
+	if errors.Is(err, sqlair.ErrNoRows) {
+		return errors.Errorf("checking object store for resource %s: %w", resourceUUID, resourceerrors.StoredResourceNotFound)
+	} else if err != nil {
+		return errors.Errorf("checking object store for resource %s: %w", resourceUUID, err)
+	}
+
+	// Check if the resource has already been stored.
+	checkResourceFileStoreStmt, err := st.Prepare(`
+SELECT &storedFileResource.*
+FROM   resource_file_store
+WHERE  resource_uuid = $storedFileResource.resource_uuid
+`, storedResource)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	err = tx.Query(ctx, checkResourceFileStoreStmt, storedResource).Get(&storedResource)
+	if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
+		return errors.Errorf("checking if resource %s already stored: %w", resourceUUID, err)
+	} else if err == nil {
+		// If a row was found, return that the resource is already stored.
+		return resourceerrors.ResourceAlreadyStored
+	}
+
+	// Record where the resource is stored.
+	insertStoredResourceStmt, err := st.Prepare(`
+INSERT INTO resource_file_store (*)
+VALUES ($storedFileResource.*)
+`, storedResource)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	var outcome sqlair.Outcome
+	err = tx.Query(ctx, insertStoredResourceStmt, storedResource).Get(&outcome)
+	if err != nil {
+		return errors.Errorf("resource %s: %w", resourceUUID, err)
+	}
+
+	if rows, err := outcome.Result().RowsAffected(); err != nil {
+		return errors.Capture(err)
+	} else if rows != 1 {
+		return errors.Errorf("expected 1 row to be inserted, got %d", rows)
+	}
+
+	return nil
+}
+
+// insertImageResource checks that the storage ID corresponds to stored
+// container image store metadata and then records that the resource is stored
+// at the provided storage ID.
+func (st *State) insertImageResource(
+	ctx context.Context,
+	tx *sqlair.TX,
+	resourceUUID coreresource.UUID,
+	storageID coreresourcestore.ID,
+) error {
+	// Get the container image metadata storage key.
+	if !storageID.IsContainerImageMetadataID() {
+		return errors.Errorf("cannot insert container image metadata resource that is not stored in the container image metadata store")
+	}
+	storageKey, err := storageID.ContainerImageMetadataStoreID()
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	// Check the resource is stored in the container image metadata store.
+	storedResource := storedContainerImageResource{
+		ResourceUUID: resourceUUID.String(),
+		StorageKey:   storageKey,
+	}
+	checkContainerImageStoreStmt, err := st.Prepare(`
+SELECT storage_key AS &storedContainerImageResource.store_storage_key
+FROM resource_container_image_metadata_store
+WHERE storage_key = $storedContainerImageResource.store_storage_key
+`, storedResource)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	err = tx.Query(ctx, checkContainerImageStoreStmt, storedResource).Get(&storedResource)
+	if errors.Is(err, sqlair.ErrNoRows) {
+		return errors.Errorf("checking container image metadata store for resource %s: %w", resourceUUID, resourceerrors.StoredResourceNotFound)
+	} else if err != nil {
+		return errors.Errorf("checking container image metadata store for resource %s: %w", resourceUUID, err)
+	}
+
+	// Check if the resource has already been stored.
+	checkResourceImageStoreStmt, err := st.Prepare(`
+SELECT &storedContainerImageResource.*
+FROM   resource_image_store
+WHERE  resource_uuid = $storedContainerImageResource.resource_uuid
+`, storedResource)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	err = tx.Query(ctx, checkResourceImageStoreStmt, storedResource).Get(&storedResource)
+	if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
+		return errors.Errorf("checking if resource %s already stored: %w", resourceUUID, err)
+	} else if err == nil {
+		// If a row was found, return that the resource is already stored.
+		return resourceerrors.ResourceAlreadyStored
+	}
+
+	// Record where the resource is stored.
+	insertStoredResourceStmt, err := st.Prepare(`
+INSERT INTO resource_image_store (*)
+VALUES ($storedContainerImageResource.*)
+`, storedResource)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	var outcome sqlair.Outcome
+	err = tx.Query(ctx, insertStoredResourceStmt, storedResource).Get(&outcome)
+	if err != nil {
+		return errors.Errorf("resource %s: %w", resourceUUID, err)
+	}
+
+	if rows, err := outcome.Result().RowsAffected(); err != nil {
+		return errors.Capture(err)
+	} else if rows != 1 {
+		return errors.Errorf("expected 1 row to be inserted, got %d", rows)
+	}
+
+	return nil
+}
+
+// insertRetrievedBy updates the retrieved by table to record who retrieved the currently stored resource.
+// in the retrieved_by table, and if not, adds the given retrieved by name and
+// type.
+func (st *State) insertRetrievedBy(
+	ctx context.Context,
+	tx *sqlair.TX,
+	resourceUUID coreresource.UUID,
+	retrievedBy string,
+	retrievedByType resource.RetrievedByType,
+) error {
+	// Verify if the resource has already been retrieved.
+	resID := resourceIdentity{UUID: resourceUUID.String()}
 	checkAlreadyRetrievedQuery := `
 SELECT resource_uuid AS &resourceIdentity.uuid 
-FROM resource_retrieved_by
-WHERE resource_uuid = $resourceIdentity.uuid`
-	checkAlreadyRetrievedStmt, err := st.Prepare(checkAlreadyRetrievedQuery, resourceUUID)
+FROM   resource_retrieved_by
+WHERE  resource_uuid = $resourceIdentity.uuid`
+	checkAlreadyRetrievedStmt, err := st.Prepare(checkAlreadyRetrievedQuery, resID)
 	if err != nil {
-		return resource.SetUnitResourceResult{}, errors.Capture(err)
+		return errors.Capture(err)
 	}
 
-	// Prepare statements to update retrieved data if not already retrieved.
-	type retrievedByType struct {
+	err = tx.Query(ctx, checkAlreadyRetrievedStmt, resID).Get(&resID)
+	if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
+		return errors.Capture(err)
+	} else if err == nil {
+		// If the resource has already been retrieved, the return an error.
+		return resourceerrors.ResourceAlreadyStored
+	}
+
+	// Get the retrieved by type ID.
+	type getRetrievedByType struct {
 		ID   int    `db:"id"`
 		Name string `db:"name"`
 	}
-	type retrievedBy struct {
+	retrievedTypeParam := getRetrievedByType{Name: string(retrievedByType)}
+	getRetrievedByTypeStmt, err := st.Prepare(`
+SELECT &getRetrievedByType.* 
+FROM   resource_retrieved_by_type 
+WHERE  name = $getRetrievedByType.name`, retrievedTypeParam)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	err = tx.Query(ctx, getRetrievedByTypeStmt, retrievedTypeParam).Get(&retrievedTypeParam)
+	if errors.Is(err, sqlair.ErrNoRows) {
+		return resourceerrors.RetrievedByTypeNotValid
+	}
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	// Insert retrieved by.
+	type setRetrievedBy struct {
 		ResourceUUID      string `db:"resource_uuid"`
 		RetrievedByTypeID int    `db:"retrieved_by_type_id"`
 		Name              string `db:"name"`
 	}
-	retrievedTypeParam := retrievedByType{Name: string(config.RetrievedByType)}
-	retrievedByParam := retrievedBy{ResourceUUID: config.ResourceUUID.String(), Name: config.RetrievedBy}
-	getRetrievedTypeQuery := `
-	SELECT &retrievedByType.* 
-	FROM resource_retrieved_by_type 
-	WHERE name = $retrievedByType.name`
-	getRetrievedByTypeStmt, err := st.Prepare(getRetrievedTypeQuery, retrievedTypeParam)
-	if err != nil {
-		return resource.SetUnitResourceResult{}, errors.Capture(err)
+	retrievedByParam := setRetrievedBy{
+		ResourceUUID:      resourceUUID.String(),
+		Name:              retrievedBy,
+		RetrievedByTypeID: retrievedTypeParam.ID,
 	}
-	insertRetrievedByQuery := `
+	insertRetrievedByStmt, err := st.Prepare(`
 INSERT INTO resource_retrieved_by (resource_uuid, retrieved_by_type_id, name)
-VALUES ($retrievedBy.*)`
-	insertRetrievedByStmt, err := st.Prepare(insertRetrievedByQuery, retrievedByParam)
+VALUES      ($setRetrievedBy.*)`, retrievedByParam)
 	if err != nil {
-		return resource.SetUnitResourceResult{}, errors.Capture(err)
+		return errors.Capture(err)
+	}
+
+	return errors.Capture(tx.Query(ctx, insertRetrievedByStmt, retrievedByParam).Run())
+}
+
+// incrementCharmModifiedVersion increments the charm modified version on any
+// application associated with a resource.
+func (st *State) incrementCharmModifiedVersion(ctx context.Context, tx *sqlair.TX, resourceUUID coreresource.UUID) error {
+	resID := resourceIdentity{UUID: resourceUUID.String()}
+	updateCharmModifiedVersionStmt, err := st.Prepare(`
+UPDATE application
+SET    charm_modified_version = IFNULL(charm_modified_version ,0) + 1
+WHERE  uuid IN (
+    SELECT application_uuid
+    FROM   application_resource
+    WHERE  resource_uuid = $resourceIdentity.uuid
+)
+`, resID)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	var outcome sqlair.Outcome
+	err = tx.Query(ctx, updateCharmModifiedVersionStmt, resID).Get(&outcome)
+	if err != nil {
+		return errors.Errorf("updating charm modified version: %w", err)
+	}
+
+	rows, err := outcome.Result().RowsAffected()
+	if err != nil {
+		return errors.Capture(err)
+	} else if rows < 1 {
+		return errors.Errorf("updating charm modified version: expected more than 1 row affected, got %d", rows)
+	}
+
+	type test struct {
+		CMV int `db:"charm_modified_version"`
+	}
+	var t test
+
+	stmt, err := st.Prepare(`
+SELECT &test.charm_modified_version
+FROM   application a
+JOIN   application_resource ar ON ar.application_uuid = a.uuid
+WHERE  resource_uuid = $resourceIdentity.uuid
+`, resID, t)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	err = tx.Query(ctx, stmt, resID).Get(&t)
+	if err != nil {
+		return errors.Errorf("updating charm modified version: %w", err)
+	}
+	st.logger.Criticalf("cmv is %d", t.CMV)
+
+	return nil
+}
+
+// SetApplicationResource marks an existing resource as in use by a CAAS
+// application.
+// Returns [resourceerrors.ResourceNotFound] if the resource UUID cannot be
+// found.
+func (st *State) SetApplicationResource(
+	ctx context.Context,
+	resourceUUID coreresource.UUID,
+) error {
+	db, err := st.DB()
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	// Prepare statement to check if the unit/resource is not already there.
+	k8sAppResource := kubernetesApplicationResource{
+		ResourceUUID: resourceUUID.String(),
+		AddedAt:      st.clock.Now(),
+	}
+	checkK8sAppResourceAlreadyExistsStmt, err := st.Prepare(`
+SELECT &kubernetesApplicationResource.*
+FROM   kubernetes_application_resource
+WHERE  kubernetes_application_resource.resource_uuid = $kubernetesApplicationResource.resource_uuid
+`, k8sAppResource)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	// Prepare statement to insert a new link between unit and resource.
+	insertK8sAppResourceStmt, err := st.Prepare(`
+INSERT INTO kubernetes_application_resource (resource_uuid, added_at)
+VALUES      ($kubernetesApplicationResource.*)
+`, k8sAppResource)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+		// Check unit resource is not already inserted.
+		err := tx.Query(ctx, checkK8sAppResourceAlreadyExistsStmt, k8sAppResource).Get(&k8sAppResource)
+		if err == nil {
+			// If the kubernetes application resource already exists, do nothing
+			// and return.
+			return nil
+		}
+		if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
+			return errors.Capture(err)
+		}
+
+		// Check that this resource exists and is a container image resource.
+		// Only container image resources can be set as kubernetes application
+		// resource.
+		resourceType, err := st.getResourceType(ctx, tx, resourceUUID)
+		if err != nil {
+			return errors.Capture(err)
+		} else if resourceType != charmresource.TypeContainerImage {
+			return errors.Errorf(
+				"applications can only be set with container image resources, this resource has type %s",
+				resourceType.String(),
+			)
+		}
+
+		// Update kubernetes application resource table.
+		var outcome sqlair.Outcome
+		err = tx.Query(ctx, insertK8sAppResourceStmt, k8sAppResource).Get(&outcome)
+		if err != nil {
+			return errors.Capture(err)
+		}
+
+		// Validate that a single row was inserted.
+		rows, err := outcome.Result().RowsAffected()
+		if err != nil {
+			return errors.Capture(err)
+		} else if rows != 1 {
+			return errors.Errorf("inserting kubernetes application resource: expected 1 row affected, got %d", rows)
+		}
+		return nil
+	})
+
+	return err
+}
+
+// SetUnitResource sets the resource metadata for a specific unit.
+// Returns [resourceerrors.UnitNotFound] if the unit id doesn't belong to an
+// existing unit.
+// Returns [resourceerrors.ResourceNotFound] if the resource id doesn't belong
+// to an existing resource.
+func (st *State) SetUnitResource(
+	ctx context.Context,
+	resourceUUID coreresource.UUID,
+	unitUUID coreunit.UUID,
+) error {
+	db, err := st.DB()
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	// Prepare statement to check if the unit/resource is not already there.
+	unitResourceInput := unitResource{
+		ResourceUUID: resourceUUID.String(),
+		UnitUUID:     unitUUID.String(),
+		AddedAt:      st.clock.Now(),
+	}
+	checkUnitResourceQuery := `
+SELECT &unitResource.*
+FROM   unit_resource 
+WHERE  unit_resource.resource_uuid = $unitResource.resource_uuid 
+AND    unit_resource.unit_uuid = $unitResource.unit_uuid`
+	checkUnitResourceStmt, err := st.Prepare(checkUnitResourceQuery, unitResourceInput)
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	// Prepare statement to check that UnitUUID is valid UUID.
+	uUUID := unitNameAndUUID{UnitUUID: unitUUID}
+	checkValidUnitQuery := `
+SELECT &unitNameAndUUID.uuid 
+FROM   unit 
+WHERE  uuid = $unitNameAndUUID.uuid`
+	checkValidUnitStmt, err := st.Prepare(checkValidUnitQuery, uUUID)
+	if err != nil {
+		return errors.Capture(err)
 	}
 
 	// Prepare statement to insert a new link between unit and resource.
 	insertUnitResourceQuery := `
 INSERT INTO unit_resource (unit_uuid, resource_uuid, added_at)
-VALUES ($unitResource.*)`
+VALUES      ($unitResource.*)`
 	insertUnitResourceStmt, err := st.Prepare(insertUnitResourceQuery, unitResourceInput)
 	if err != nil {
-		return resource.SetUnitResourceResult{}, errors.Capture(err)
+		return errors.Capture(err)
 	}
 
 	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
@@ -525,44 +954,25 @@ VALUES ($unitResource.*)`
 			return errors.Capture(err)
 		}
 
-		// Check resource and unit exists.
-		err = tx.Query(ctx, checkValidResourceStmt, resourceUUID).Get(&resourceUUID)
+		// Check the resource exists and is a container image resource.
+		// Only container image resources can be set as kubernetes application
+		// resource.
+		resourceType, err := st.getResourceType(ctx, tx, resourceUUID)
+		if err != nil {
+			return errors.Capture(err)
+		} else if resourceType != charmresource.TypeFile {
+			return errors.Errorf("units can only be set with file resources, this resource has type %s",
+				resourceType.String(),
+			)
+		}
+
+		// Check unit exists.
+		err = tx.Query(ctx, checkValidUnitStmt, uUUID).Get(&uUUID)
 		if errors.Is(err, sqlair.ErrNoRows) {
-			return errors.Errorf("resource %s: %w", resourceUUID.UUID, resourceerrors.ResourceNotFound)
+			return errors.Errorf("resource %s: %w", uUUID.UnitUUID, resourceerrors.UnitNotFound)
 		}
 		if err != nil {
 			return errors.Capture(err)
-		}
-		err = tx.Query(ctx, checkValidUnitStmt, unitUUID).Get(&unitUUID)
-		if errors.Is(err, sqlair.ErrNoRows) {
-			return errors.Errorf("resource %s: %w", unitUUID.UnitUUID, resourceerrors.UnitNotFound)
-		}
-		if err != nil {
-			return errors.Capture(err)
-		}
-
-		// Verify if the application is already retrieved.
-		err = tx.Query(ctx, checkAlreadyRetrievedStmt, resourceUUID).Get(&resourceUUID)
-		if err != nil && !errors.Is(err, sqlair.ErrNoRows) {
-			return errors.Capture(err)
-		}
-
-		// Update retrieved by if it is not retrieved.
-		if errors.Is(err, sqlair.ErrNoRows) {
-			err = tx.Query(ctx, getRetrievedByTypeStmt, retrievedTypeParam).Get(&retrievedTypeParam)
-			if errors.Is(err, sqlair.ErrNoRows) {
-				return resourceerrors.UnknownRetrievedByType
-			}
-			if err != nil {
-				return errors.Capture(err)
-			}
-
-			// Insert retrieved by.
-			retrievedByParam.RetrievedByTypeID = retrievedTypeParam.ID
-			err = tx.Query(ctx, insertRetrievedByStmt, retrievedByParam).Run()
-			if err != nil {
-				return errors.Capture(err)
-			}
 		}
 
 		// update unit resource table.
@@ -570,10 +980,7 @@ VALUES ($unitResource.*)`
 		return errors.Capture(err)
 	})
 
-	return resource.SetUnitResourceResult{
-		UUID:      coreresource.UUID(unitResourceInput.ResourceUUID),
-		Timestamp: unitResourceInput.AddedAt,
-	}, err
+	return err
 }
 
 // OpenApplicationResource returns the metadata for a resource.
