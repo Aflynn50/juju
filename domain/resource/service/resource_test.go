@@ -116,40 +116,35 @@ func (s *resourceServiceSuite) TestDeleteUnitResourcesUnexpectedError(c *gc.C) {
 		gc.Commentf("Should return underlying error"))
 }
 
-func (s *resourceServiceSuite) TestGetApplicationResourceID(c *gc.C) {
+func (s *resourceServiceSuite) TestGetResourceUUID(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
 	retID := resourcetesting.GenResourceUUID(c)
-	args := resource.GetApplicationResourceIDArgs{
-		ApplicationID: applicationtesting.GenApplicationUUID(c),
-		Name:          "test-resource",
-	}
-	s.state.EXPECT().GetApplicationResourceID(gomock.Any(), args).Return(retID, nil)
+	s.state.EXPECT().GetResourceUUID(
+		gomock.Any(),
+		applicationtesting.GenApplicationUUID(c),
+		"test-resource",
+	).Return(retID, nil)
 
-	ret, err := s.service.GetApplicationResourceID(context.Background(), args)
+	ret, err := s.service.GetResourceUUID(
+		context.Background(),
+		applicationtesting.GenApplicationUUID(c),
+		"test-resource",
+	)
 	c.Assert(err, jc.ErrorIsNil)
 	c.Check(ret, gc.Equals, retID)
 }
 
-func (s *resourceServiceSuite) TestGetApplicationResourceIDBadID(c *gc.C) {
+func (s *resourceServiceSuite) TestGetResourceUUIDBadID(c *gc.C) {
 	defer s.setupMocks(c).Finish()
 
-	args := resource.GetApplicationResourceIDArgs{
-		ApplicationID: "",
-		Name:          "test-resource",
-	}
-	_, err := s.service.GetApplicationResourceID(context.Background(), args)
+	_, err := s.service.GetResourceUUID(context.Background(), "", "test-resource")
 	c.Assert(err, jc.ErrorIs, errors.NotValid)
 }
 
-func (s *resourceServiceSuite) TestGetApplicationResourceIDBadName(c *gc.C) {
+func (s *resourceServiceSuite) TestGetResourceUUIDBadName(c *gc.C) {
 	defer s.setupMocks(c).Finish()
-
-	args := resource.GetApplicationResourceIDArgs{
-		ApplicationID: applicationtesting.GenApplicationUUID(c),
-		Name:          "",
-	}
-	_, err := s.service.GetApplicationResourceID(context.Background(), args)
+	_, err := s.service.GetResourceUUID(context.Background(), applicationtesting.GenApplicationUUID(c), "")
 	c.Assert(err, jc.ErrorIs, resourceerrors.ResourceNameNotValid)
 }
 

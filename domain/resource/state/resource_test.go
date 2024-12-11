@@ -394,10 +394,11 @@ func (s *resourceSuite) TestGetApplicationResourceID(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Arrange) failed to populate DB: %v", errors.ErrorStack(err)))
 
 	// Act: Get application resource ID
-	id, err := s.state.GetApplicationResourceID(context.Background(), resource.GetApplicationResourceIDArgs{
-		ApplicationID: application.ID(s.constants.fakeApplicationUUID1),
-		Name:          found.Name,
-	})
+	id, err := s.state.GetResourceUUID(
+		context.Background(),
+		application.ID(s.constants.fakeApplicationUUID1),
+		found.Name,
+	)
 	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to get application resource ID: %v", errors.ErrorStack(err)))
 	c.Assert(id, gc.Equals, coreresource.UUID(found.UUID),
 		gc.Commentf("(Act) unexpected application resource ID"))
@@ -409,10 +410,11 @@ func (s *resourceSuite) TestGetApplicationResourceID(c *gc.C) {
 func (s *resourceSuite) TestGetApplicationResourceIDNotFound(c *gc.C) {
 	// Arrange: No resources
 	// Act: Get application resource ID
-	_, err := s.state.GetApplicationResourceID(context.Background(), resource.GetApplicationResourceIDArgs{
-		ApplicationID: application.ID(s.constants.fakeApplicationUUID1),
-		Name:          "resource-name-not-found",
-	})
+	_, err := s.state.GetResourceUUID(
+		context.Background(),
+		application.ID(s.constants.fakeApplicationUUID1),
+		"resource-name-not-found",
+	)
 	c.Assert(err, jc.ErrorIs, resourceerrors.ResourceNotFound, gc.Commentf("(Act) unexpected error"))
 }
 

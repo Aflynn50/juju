@@ -30,9 +30,9 @@ type State interface {
 	// unit.
 	DeleteUnitResources(ctx context.Context, uuid coreunit.UUID) error
 
-	// GetApplicationResourceID returns the ID of the application resource
-	// specified by natural key of application and resource name.
-	GetApplicationResourceID(ctx context.Context, args resource.GetApplicationResourceIDArgs) (coreresource.UUID, error)
+	// GetResourceUUID returns the UUID of the resource specified by natural key
+	// of application and resource name.
+	GetResourceUUID(ctx context.Context, applicationID coreapplication.ID, name string) (coreresource.UUID, error)
 
 	// ListResources returns the list of resource for the given application.
 	ListResources(ctx context.Context, applicationID coreapplication.ID) (resource.ApplicationResources, error)
@@ -141,8 +141,8 @@ func (s *Service) DeleteUnitResources(
 	return s.st.DeleteUnitResources(ctx, uuid)
 }
 
-// GetApplicationResourceID returns the ID of the application resource specified
-// by natural key of application and resource name.
+// GetResourceUUID returns the UUID of the resource specified by natural key of
+// application and resource name.
 //
 // The following error types can be expected to be returned:
 //   - [resourceerrors.ResourceNameNotValid] if no resource name is provided
@@ -150,17 +150,15 @@ func (s *Service) DeleteUnitResources(
 //   - [coreerrors.NotValid] is returned if the application ID is not valid.
 //   - [resourceerrors.ResourceNotFound] if no resource with name exists for
 //     given application.
-func (s *Service) GetApplicationResourceID(
-	ctx context.Context,
-	args resource.GetApplicationResourceIDArgs,
-) (coreresource.UUID, error) {
-	if err := args.ApplicationID.Validate(); err != nil {
+func (s *Service) GetResourceUUID(
+	ctx context.Context, applicationID coreapplication.ID, name string) (coreresource.UUID, error) {
+	if err := applicationID.Validate(); err != nil {
 		return "", errors.Errorf("application id: %w", err)
 	}
-	if args.Name == "" {
+	if name == "" {
 		return "", resourceerrors.ResourceNameNotValid
 	}
-	return s.st.GetApplicationResourceID(ctx, args)
+	return s.st.GetResourceUUID(ctx, applicationID, name)
 }
 
 // ListResources returns the resource data for the given application including

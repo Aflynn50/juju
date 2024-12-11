@@ -102,10 +102,8 @@ type UnitResources struct {
 }
 
 // GetApplicationResourceIDArgs holds the arguments for the
-// GetApplicationResourceID method.
+// GetResourceUUID method.
 type GetApplicationResourceIDArgs struct {
-	ApplicationID application.ID
-	Name          string
 }
 
 // SetRepositoryResourcesArgs holds the arguments for the
