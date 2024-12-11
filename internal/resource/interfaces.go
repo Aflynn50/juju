@@ -22,6 +22,9 @@ type ModelConfigService interface {
 	ModelConfig(context.Context) (*config.Config, error)
 }
 
+type ResourceService interface {
+}
+
 // Resources represents the methods used by the resource opener from state.Resources.
 type Resources interface {
 	// GetResource returns the identified resource.

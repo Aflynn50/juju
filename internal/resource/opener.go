@@ -25,6 +25,7 @@ import (
 type ResourceOpenerArgs struct {
 	State              *state.State
 	ModelConfigService ModelConfigService
+	ResourceService    ResourceService
 	Store              objectstore.ObjectStore
 }
 
@@ -60,6 +61,7 @@ func NewResourceOpener(
 
 	return &ResourceOpener{
 		state:                args.State.Resources(args.Store),
+		resourceService:      args.ResourceService,
 		modelUUID:            args.State.ModelUUID(),
 		resourceClientGetter: newClientGetter(charmURL, args.ModelConfigService),
 		retrievedBy:          unit.Tag(),
@@ -96,6 +98,7 @@ func NewResourceOpenerForApplication(
 
 	return &ResourceOpener{
 		state:                args.State.Resources(args.Store),
+		resourceService:      args.ResourceService,
 		modelUUID:            args.State.ModelUUID(),
 		resourceClientGetter: newClientGetter(charmURL, args.ModelConfigService),
 		retrievedBy:          application.Tag(),
@@ -140,13 +143,14 @@ type resourceClientGetterFunc func(ctx context.Context) (*ResourceRetryClient, e
 // It will first look in the supplied cache for the
 // requested resource.
 type ResourceOpener struct {
-	modelUUID   string
-	state       Resources
-	retrievedBy names.Tag
-	charmURL    *charm.URL
-	charmOrigin state.CharmOrigin
-	appName     string
-	unitName    string
+	modelUUID       string
+	state           Resources
+	resourceService ResourceService
+	retrievedBy     names.Tag
+	charmURL        *charm.URL
+	charmOrigin     state.CharmOrigin
+	appName         string
+	unitName        string
 
 	resourceClientGetter resourceClientGetterFunc
 	resourceDownloadLock func() ResourceDownloadLock
