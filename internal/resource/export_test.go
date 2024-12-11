@@ -38,14 +38,14 @@ func NewResourceOpenerForTest(
 ) *ResourceOpener {
 	return &ResourceOpener{
 		modelUUID:            "uuid",
-		resourceCache:        res,
-		user:                 tag,
+		state:                res,
+		retrievedBy:          tag,
 		unitName:             unitName,
 		appName:              appName,
 		charmURL:             charmURL,
 		charmOrigin:          charmOrigin,
 		resourceClientGetter: resourceClientGetter,
-		resourceDownloadLimiterFunc: func() ResourceDownloadLock {
+		resourceDownloadLock: func() ResourceDownloadLock {
 			return resourceDownloadLimiter
 		},
 	}

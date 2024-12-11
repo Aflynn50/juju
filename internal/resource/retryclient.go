@@ -30,7 +30,7 @@ func newRetryClient(client ResourceGetter) *ResourceRetryClient {
 		},
 		// We don't want to retry for ever.
 		// If we cannot get a resource after trying a few times,
-		// most likely user intervention is needed.
+		// most likely retrievedBy intervention is needed.
 		Attempts: 3,
 		// A one minute gives enough time for potential connection
 		// issues to sort themselves out without making the caller wait

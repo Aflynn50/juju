@@ -63,7 +63,8 @@ func (s *OpenerSuite) TestOpenResource(c *gc.C) {
 
 	opened, err := s.newOpener(0).OpenResource(context.TODO(), "wal-e")
 	c.Assert(err, jc.ErrorIsNil)
-	c.Check(opened.Resource, gc.DeepEquals, res)
+	c.Check(opened.Size, gc.Equals, res.Size)
+	c.Check(opened.Fingerprint.String(), gc.Equals, res.Fingerprint.String())
 	c.Assert(opened.Close(), jc.ErrorIsNil)
 }
 
@@ -104,7 +105,8 @@ func (s *OpenerSuite) TestOpenResourceThrottle(c *gc.C) {
 			start.Done()
 			opened, err := s.newOpener(maxConcurrentRequests).OpenResource(context.TODO(), "wal-e")
 			c.Assert(err, jc.ErrorIsNil)
-			c.Check(opened.Resource, gc.DeepEquals, res)
+			c.Check(opened.Size, gc.Equals, res.Size)
+			c.Check(opened.Fingerprint.String(), gc.Equals, res.Fingerprint.String())
 			c.Assert(opened.Close(), jc.ErrorIsNil)
 		}()
 	}
@@ -148,7 +150,8 @@ func (s *OpenerSuite) TestOpenResourceApplication(c *gc.C) {
 
 	opened, err := s.newOpener(0).OpenResource(context.TODO(), "wal-e")
 	c.Assert(err, jc.ErrorIsNil)
-	c.Assert(opened.Resource, gc.DeepEquals, res)
+	c.Check(opened.Size, gc.Equals, res.Size)
+	c.Check(opened.Fingerprint.String(), gc.Equals, res.Fingerprint.String())
 	err = opened.Close()
 	c.Assert(err, jc.ErrorIsNil)
 }
@@ -231,7 +234,6 @@ func (s *OpenerSuite) TestGetResourceErrorReleasesLock(c *gc.C) {
 	opened, err := s.newOpener(-1).OpenResource(context.TODO(), "wal-e")
 	c.Assert(err, gc.ErrorMatches, "failed after retrying: boom")
 	c.Check(opened, gc.NotNil)
-	c.Check(opened.Resource, gc.DeepEquals, coreresource.Resource{})
 	c.Check(opened.ReadCloser, gc.IsNil)
 }
 

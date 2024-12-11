@@ -8,21 +8,15 @@ import (
 	"io"
 
 	"github.com/juju/errors"
+
+	charmresource "github.com/juju/juju/internal/charm/resource"
 )
 
 // Opened provides both the resource info and content.
 type Opened struct {
-	Resource
+	Size        int64
+	Fingerprint charmresource.Fingerprint
 	io.ReadCloser
-}
-
-// Content returns the "content" for the opened resource.
-func (o Opened) Content() Content {
-	return Content{
-		Data:        o.ReadCloser,
-		Size:        o.Size,
-		Fingerprint: o.Fingerprint,
-	}
 }
 
 func (o Opened) Close() error {

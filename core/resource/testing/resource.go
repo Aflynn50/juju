@@ -23,9 +23,7 @@ type newCharmResourceFunc func(c *gc.C, name, content string) charmresource.Reso
 // content. The origin is set to "upload". A reader is also returned
 // which contains the content.
 func NewResource(c *gc.C, stub *testing.Stub, name, applicationID, content string) resource.Opened {
-	username := "a-user"
 	return resource.Opened{
-		Resource:   newResource(c, name, applicationID, username, content, NewCharmResource),
 		ReadCloser: newStubReadCloser(stub, content),
 	}
 }
@@ -34,9 +32,7 @@ func NewResource(c *gc.C, stub *testing.Stub, name, applicationID, content strin
 // content. The origin is set to "upload" (via resource created by  NewCharmDockerResource).
 // A reader is also returned which contains the content.
 func NewDockerResource(c *gc.C, stub *testing.Stub, name, applicationID, content string) resource.Opened {
-	username := "a-user"
 	return resource.Opened{
-		Resource:   newResource(c, name, applicationID, username, content, NewCharmDockerResource),
 		ReadCloser: newStubReadCloser(stub, content),
 	}
 }
