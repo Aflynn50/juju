@@ -216,11 +216,12 @@ func (st *State) DeleteUnitResources(
 	})
 }
 
-// GetApplicationResourceID returns the ID of the application resource
-// specified by natural key of application and resource name.
-func (st *State) GetApplicationResourceID(
+// GetResourceUUID returns the UUID of the resource specified by natural key of
+// application and resource name.
+func (st *State) GetResourceUUID(
 	ctx context.Context,
-	args resource.GetApplicationResourceIDArgs,
+	applicationID application.ID,
+	name string,
 ) (coreresource.UUID, error) {
 	db, err := st.DB()
 	if err != nil {
@@ -230,8 +231,8 @@ func (st *State) GetApplicationResourceID(
 	// Define the resource identity based on the provided application ID and
 	// name.
 	resource := resourceIdentity{
-		ApplicationUUID: args.ApplicationID.String(),
-		Name:            args.Name,
+		ApplicationUUID: applicationID.String(),
+		Name:            name,
 	}
 
 	// Prepare the SQL statement to retrieve the resource UUID.
