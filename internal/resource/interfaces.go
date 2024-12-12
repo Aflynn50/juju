@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/url"
 
+	coreapplication "github.com/juju/juju/core/application"
 	"github.com/juju/juju/core/resource"
 	"github.com/juju/juju/environs/config"
 	charmresource "github.com/juju/juju/internal/charm/resource"
@@ -23,6 +24,18 @@ type ModelConfigService interface {
 }
 
 type ResourceService interface {
+	// OpenResource returns the details of and a reader for the resource.
+	//
+	// The following error types can be expected to be returned:
+	//   - [resourceerrors.ResourceNotFound] if the specified resource does not
+	//     exist.
+	//   - [resourceerrors.StoredResourceNotFound] if the specified resource is not
+	//     in the resource store.
+	OpenResource(ctx context.Context, resourceUUID resource.UUID) (resource.Resource, io.ReadCloser, error)
+
+	// GetResourceUUID returns the UUID of the resource specified by natural key
+	// of application and resource name.
+	GetResourceUUID(ctx context.Context, applicationID coreapplication.ID, name string) (resource.UUID, error)
 }
 
 // Resources represents the methods used by the resource opener from state.Resources.

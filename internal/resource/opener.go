@@ -248,13 +248,6 @@ func (ro ResourceOpener) getResource(ctx context.Context, resName string, done f
 	return res, reader, nil
 }
 
-func (ro ResourceOpener) open(resName string) (resource.Resource, io.ReadCloser, error) {
-	if ro.unitName == "" {
-		return ro.state.OpenResource(ro.appName, resName)
-	}
-	return ro.state.OpenResourceForUniter(ro.unitName, resName)
-}
-
 // set stores the resource info and data in a repo, if there is one.
 // If no repo is in use then this is a no-op. Note that the returned
 // reader may or may not be the same one that was passed in.
@@ -273,6 +266,7 @@ func (ro ResourceOpener) set(chRes charmresource.Resource, reader io.ReadCloser)
 	}
 
 	// Make sure to use the potentially updated resource details.
+	reader, err := ro.resourceService.OpenResource()
 	res, reader, err = ro.open(res.Name)
 	if err != nil {
 		return resource.Resource{}, nil, errors.Capture(err)
