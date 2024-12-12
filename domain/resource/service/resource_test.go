@@ -257,10 +257,12 @@ func (s *resourceServiceSuite) TestStoreResource(c *gc.C) {
 
 	err = s.service.StoreResource(
 		context.Background(),
-		resourceUUID,
-		reader,
-		retrievedBy,
-		retrievedByType,
+		resource.StoreResourceArgs{
+			ResourceUUID:    resourceUUID,
+			Reader:          reader,
+			RetrievedBy:     retrievedBy,
+			RetrievedByType: retrievedByType,
+		},
 	)
 	c.Assert(err, jc.ErrorIsNil)
 }
@@ -268,10 +270,9 @@ func (s *resourceServiceSuite) TestStoreResource(c *gc.C) {
 func (s *resourceServiceSuite) TestStoreResourceBadUUID(c *gc.C) {
 	err := s.service.StoreResource(
 		context.Background(),
-		"bad-uuid",
-		nil,
-		"bob",
-		resource.User,
+		resource.StoreResourceArgs{
+			ResourceUUID: "bad-uuid",
+		},
 	)
 	c.Assert(err, jc.ErrorIs, errors.NotValid)
 }
@@ -279,10 +280,10 @@ func (s *resourceServiceSuite) TestStoreResourceBadUUID(c *gc.C) {
 func (s *resourceServiceSuite) TestStoreResourceBadReader(c *gc.C) {
 	err := s.service.StoreResource(
 		context.Background(),
-		resourcetesting.GenResourceUUID(c),
-		nil,
-		"bob",
-		resource.User,
+		resource.StoreResourceArgs{
+			ResourceUUID: resourcetesting.GenResourceUUID(c),
+			Reader:       nil,
+		},
 	)
 	c.Assert(err, gc.ErrorMatches, "cannot have nil reader")
 }
@@ -290,10 +291,12 @@ func (s *resourceServiceSuite) TestStoreResourceBadReader(c *gc.C) {
 func (s *resourceServiceSuite) TestStoreResourceBadRetrievedBy(c *gc.C) {
 	err := s.service.StoreResource(
 		context.Background(),
-		resourcetesting.GenResourceUUID(c),
-		bytes.NewBufferString("spam"),
-		"bob",
-		resource.Unknown,
+		resource.StoreResourceArgs{
+			ResourceUUID:    resourcetesting.GenResourceUUID(c),
+			Reader:          bytes.NewBufferString("spam"),
+			RetrievedBy:     "bob",
+			RetrievedByType: resource.Unknown,
+		},
 	)
 	c.Assert(err, jc.ErrorIs, resourceerrors.RetrievedByTypeNotValid)
 }
@@ -336,10 +339,12 @@ func (s *resourceServiceSuite) TestStoreResourceAndIncrementCharmModifiedVersion
 
 	err = s.service.StoreResourceAndIncrementCharmModifiedVersion(
 		context.Background(),
-		resourceUUID,
-		reader,
-		retrievedBy,
-		retrievedByType,
+		resource.StoreResourceArgs{
+			ResourceUUID:    resourceUUID,
+			Reader:          reader,
+			RetrievedBy:     retrievedBy,
+			RetrievedByType: retrievedByType,
+		},
 	)
 	c.Assert(err, jc.ErrorIsNil)
 }
@@ -347,10 +352,9 @@ func (s *resourceServiceSuite) TestStoreResourceAndIncrementCharmModifiedVersion
 func (s *resourceServiceSuite) TestStoreResourceAndIncrementCharmModifiedVersionBadUUID(c *gc.C) {
 	err := s.service.StoreResourceAndIncrementCharmModifiedVersion(
 		context.Background(),
-		"bad-uuid",
-		nil,
-		"bob",
-		resource.User,
+		resource.StoreResourceArgs{
+			ResourceUUID: "bad-uuid",
+		},
 	)
 	c.Assert(err, jc.ErrorIs, errors.NotValid)
 }
@@ -358,10 +362,10 @@ func (s *resourceServiceSuite) TestStoreResourceAndIncrementCharmModifiedVersion
 func (s *resourceServiceSuite) TestStoreResourceAndIncrementCharmModifiedVersionBadReader(c *gc.C) {
 	err := s.service.StoreResourceAndIncrementCharmModifiedVersion(
 		context.Background(),
-		resourcetesting.GenResourceUUID(c),
-		nil,
-		"bob",
-		resource.User,
+		resource.StoreResourceArgs{
+			ResourceUUID: resourcetesting.GenResourceUUID(c),
+			Reader:       nil,
+		},
 	)
 	c.Assert(err, gc.ErrorMatches, "cannot have nil reader")
 }
@@ -369,10 +373,12 @@ func (s *resourceServiceSuite) TestStoreResourceAndIncrementCharmModifiedVersion
 func (s *resourceServiceSuite) TestStoreResourceAndIncrementCharmModifiedVersionBadRetrievedBy(c *gc.C) {
 	err := s.service.StoreResourceAndIncrementCharmModifiedVersion(
 		context.Background(),
-		resourcetesting.GenResourceUUID(c),
-		bytes.NewBufferString("spam"),
-		"bob",
-		resource.Unknown,
+		resource.StoreResourceArgs{
+			ResourceUUID:    resourcetesting.GenResourceUUID(c),
+			Reader:          bytes.NewBufferString("spam"),
+			RetrievedBy:     "bob",
+			RetrievedByType: resource.Unknown,
+		},
 	)
 	c.Assert(err, jc.ErrorIs, resourceerrors.RetrievedByTypeNotValid)
 }
@@ -404,7 +410,7 @@ func (s *resourceServiceSuite) TestSetUnitResourceBadUnitUUID(c *gc.C) {
 	resourceUUID := resourcetesting.GenResourceUUID(c)
 
 	err := s.service.SetUnitResource(context.Background(), resourceUUID, "bad-uuid")
-	c.Assert(err, jc.ErrorIs, resourceerrors.UnitUUIDNotValid)
+	c.Assert(err, jc.ErrorIs, errors.NotValid)
 }
 
 func (s *resourceServiceSuite) TestOpenResource(c *gc.C) {

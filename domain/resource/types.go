@@ -4,6 +4,7 @@
 package resource
 
 import (
+	"io"
 	"time"
 
 	"github.com/juju/juju/core/application"
@@ -111,4 +112,18 @@ type SetRepositoryResourcesArgs struct {
 	Info []charmresource.Resource
 	// LastPolled indicates when the resource data was last polled.
 	LastPolled time.Time
+}
+
+// StoreResourceArgs holds the arguments for resource storage methods.
+type StoreResourceArgs struct {
+	// ResourceUUID is the unique identifier of the resource.
+	ResourceUUID coreresource.UUID
+	// Reader is a reader for the resource blob.
+	Reader io.Reader
+	// RetrievedBy is the identity of the entity that retrieved the resource.
+	// This field is optional.
+	RetrievedBy string
+	// RetrievedByType is the type of entity that retrieved the resource. This
+	// field is optional.
+	RetrievedByType RetrievedByType
 }

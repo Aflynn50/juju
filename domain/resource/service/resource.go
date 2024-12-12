@@ -40,15 +40,17 @@ type State interface {
 	// GetResource returns the identified resource.
 	GetResource(ctx context.Context, resourceUUID coreresource.UUID) (resource.Resource, error)
 
-	// StoreResource records a stored resource along with who retrieved it.
-	// Returns [resourceerrors.ResourceNotFound] if the resource UUID cannot be found.
-	// Returns [resourceerrors.StoredResourceNotFound] if the stored resource at the
-	// storageID cannot be found.
-	// Returns [resourceerrors.ResourceAlreadyStored] if the resource is already
-	// associated with a stored resource blob.
-	// Returns [resourceerrors.RetrievedByTypeNotValid] if the retrieved by type is
-	// invalid.
-	StoreResource(
+	// RecordStoredResource records a stored resource along with who retrieved it.
+	//
+	// The following error types can be expected to be returned:
+	// - [resourceerrors.ResourceNotFound] if the resource UUID cannot be found.
+	// - [resourceerrors.StoredResourceNotFound] if the stored resource at the
+	//   storageID cannot be found.
+	// - [resourceerrors.ResourceAlreadyStored] if the resource is already
+	//   associated with a stored resource blob.
+	// - [resourceerrors.RetrievedByTypeNotValid] if the retrieved by type is
+	//   invalid.
+	RecordStoredResource(
 		ctx context.Context,
 		resourceUUID coreresource.UUID,
 		storageUUID coreresourcestore.ID,
@@ -58,13 +60,19 @@ type State interface {
 	) error
 
 	// SetUnitResource sets the resource metadata for a specific unit.
-	// Returns [resourceerrors.UnitNotFound] if the unit id doesn't belong to an existing unit.
-	// Returns [resourceerrors.ResourceNotFound] if the resource id doesn't belong to an existing resource.
+	//
+	// The following error types can be expected to be returned:
+	// - [resourceerrors.UnitNotFound] if the unit id doesn't belong to an
+	//   existing unit.
+	// - [resourceerrors.ResourceNotFound] if the resource id doesn't belong to
+	//   an existing resource.
 	SetUnitResource(ctx context.Context, resourceUUID coreresource.UUID, unitUUID coreunit.UUID) error
 
 	// SetApplicationResource marks an existing resource as in use by a CAAS
 	// application.
-	// Returns [resourceerrors.ResourceNotFound] if the resource UUID cannot be found.
+	//
+	// The following error types can be expected to be returned:
+	// - [resourceerrors.ResourceNotFound] if the resource UUID cannot be found.
 	SetApplicationResource(ctx context.Context, resourceUUID coreresource.UUID) error
 
 	// SetRepositoryResources sets the "polled" resource for the
@@ -196,74 +204,62 @@ func (s *Service) GetResource(
 
 // StoreResource adds the application resource to blob storage and updates the
 // metadata. It also sets the retrival information for the resource.
-// Returns [resourceerrors.ResourceNotFound] if the resource UUID cannot be
-// found.
-// Returns [resourceerrors.StoredResourceNotFound] if the stored resource at the
-// storageID cannot be found.
-// Returns [resourceerrors.ResourceAlreadyStored] if the resource is already
-// associated with a stored resource blob.
-// Returns [resourceerrors.RetrievedByTypeNotValid] if the retrieved by type is
-// invalid.
+//
+// The following error types can be expected to be returned:
+//   - [resourceerrors.ResourceNotFound] if the resource UUID cannot be
+//     found.
+//   - [resourceerrors.StoredResourceNotFound] if the stored resource at the
+//     storageID cannot be found.
+//   - [resourceerrors.ResourceAlreadyStored] if the resource is already
+//     associated with a stored resource blob.
+//   - [resourceerrors.RetrievedByTypeNotValid] if the retrieved by type is
+//     invalid.
 func (s *Service) StoreResource(
 	ctx context.Context,
-	resourceUUID coreresource.UUID,
-	reader io.Reader,
-	retrievedBy string,
-	retrievedByType resource.RetrievedByType,
+	args resource.StoreResourceArgs,
 ) error {
-	return s.storeResource(
-		ctx,
-		resourceUUID,
-		reader,
-		retrievedBy,
-		retrievedByType,
-		false,
-	)
+	return s.storeResource(ctx, args, false)
 }
 
 // StoreResourceAndIncrementCharmModifiedVersion adds the application resource
 // to blob storage and updates the metadata. It sets the retrival information
 // for the resource and also increments the charm modified version in for the
 // resources' application.
-// Returns [resourceerrors.ResourceNotFound] if the resource UUID cannot be
-// found.
-// Returns [resourceerrors.StoredResourceNotFound] if the stored resource at the
-// storageID cannot be found.
-// Returns [resourceerrors.ResourceAlreadyStored] if the resource is already
-// associated with a stored resource blob.
-// Returns [resourceerrors.RetrievedByTypeNotValid] if the retrieved by type is
-// invalid.
+//
+// The following error types can be expected to be returned:
+//   - [resourceerrors.ResourceNotFound] if the resource UUID cannot be
+//     found.
+//   - [resourceerrors.StoredResourceNotFound] if the stored resource at the
+//     storageID cannot be found.
+//   - [resourceerrors.ResourceAlreadyStored] if the resource is already
+//     associated with a stored resource blob.
+//   - [resourceerrors.RetrievedByTypeNotValid] if the retrieved by type is
+//     invalid.
 func (s *Service) StoreResourceAndIncrementCharmModifiedVersion(
 	ctx context.Context,
-	resourceUUID coreresource.UUID,
-	reader io.Reader,
-	retrievedBy string,
-	retrievedByType resource.RetrievedByType,
+	args resource.StoreResourceArgs,
 ) error {
-	return s.storeResource(ctx, resourceUUID, reader, retrievedBy, retrievedByType, true)
+	return s.storeResource(ctx, args, true)
 }
 
 func (s *Service) storeResource(
 	ctx context.Context,
-	resourceUUID coreresource.UUID,
-	reader io.Reader,
-	retrievedBy string,
-	retrievedByType resource.RetrievedByType,
+	args resource.StoreResourceArgs,
 	incrementCharmModifiedVersion bool,
 ) error {
-	if err := resourceUUID.Validate(); err != nil {
+	if err := args.ResourceUUID.Validate(); err != nil {
 		return errors.Errorf("resource uuid: %w", err)
 	}
 
-	if reader == nil {
+	if args.Reader == nil {
 		return errors.Errorf("cannot have nil reader")
 	}
 
-	if retrievedBy != "" && retrievedByType == resource.Unknown {
+	if args.RetrievedBy != "" && args.RetrievedByType == resource.Unknown {
 		return resourceerrors.RetrievedByTypeNotValid
 	}
 
-	res, err := s.st.GetResource(ctx, resourceUUID)
+	res, err := s.st.GetResource(ctx, args.ResourceUUID)
 	if err != nil {
 		return errors.Errorf("getting resource: %w", err)
 	}
@@ -273,17 +269,17 @@ func (s *Service) storeResource(
 		return errors.Errorf("getting resource store for %s: %w", res.Type.String(), err)
 	}
 
-	storageUUID, err := store.Put(ctx, resourceUUID.String(), reader, res.Size, coreresourcestore.NewFingerprint(res.Fingerprint.Fingerprint))
+	storageUUID, err := store.Put(ctx, args.ResourceUUID.String(), args.Reader, res.Size, coreresourcestore.NewFingerprint(res.Fingerprint.Fingerprint))
 	if err != nil {
 		return errors.Errorf("putting resource %q in store: %w", res.Name, err)
 	}
 
-	err = s.st.StoreResource(
+	err = s.st.RecordStoredResource(
 		ctx,
-		resourceUUID,
+		args.ResourceUUID,
 		storageUUID,
-		retrievedBy,
-		retrievedByType,
+		args.RetrievedBy,
+		args.RetrievedByType,
 		incrementCharmModifiedVersion,
 	)
 	if err != nil {
@@ -317,9 +313,9 @@ func (s *Service) OpenResource(
 		return resource.Resource{}, nil, errors.Errorf("getting resource store for %s: %w", res.Type.String(), err)
 	}
 
-	// TODO(aflynn) ideally this would be finding the resource via the resources
-	// storageUUID, however the object store does not currently have a method
-	// for this.
+	// TODO(aflynn): ideally this would be finding the resource via the
+	// resources storageID, however the object store does not currently have a
+	// method for this.
 	reader, size, err := store.Get(ctx, resourceUUID.String())
 	if errors.Is(err, objectstoreerrors.ErrNotFound) ||
 		errors.Is(err, containerimageresourcestoreerrors.ContainerImageMetadataNotFound) {
@@ -335,10 +331,12 @@ func (s *Service) OpenResource(
 }
 
 // SetUnitResource sets the unit as using the resource.
-// Returns [resourceerrors.UnitNotFound] if the unit id doesn't belong to an
-// existing unit.
-// Returns [resourceerrors.ResourceNotFound] if the resource id doesn't belong
-// to an existing resource.
+//
+// The following error types can be expected to be returned:
+//   - [resourceerrors.UnitNotFound] if the unit id doesn't belong to an
+//     existing unit.
+//   - [resourceerrors.ResourceNotFound] if the resource id doesn't belong
+//     to an existing resource.
 func (s *Service) SetUnitResource(
 	ctx context.Context,
 	resourceUUID coreresource.UUID,
@@ -349,7 +347,7 @@ func (s *Service) SetUnitResource(
 	}
 
 	if err := unitUUID.Validate(); err != nil {
-		return resourceerrors.UnitUUIDNotValid
+		return errors.Errorf("unit uuid: %w", err)
 	}
 
 	err := s.st.SetUnitResource(ctx, resourceUUID, unitUUID)
@@ -361,8 +359,10 @@ func (s *Service) SetUnitResource(
 
 // SetApplicationResource marks an existing resource as in use by a CAAS
 // application.
-// Returns [resourceerrors.ResourceNotFound] if the resource UUID cannot be
-// found.
+//
+// The following error types can be expected to be returned:
+//   - [resourceerrors.ResourceNotFound] if the resource UUID cannot be
+//     found.
 func (s *Service) SetApplicationResource(
 	ctx context.Context,
 	resourceUUID coreresource.UUID,

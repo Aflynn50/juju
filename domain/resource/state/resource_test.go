@@ -629,7 +629,7 @@ func (s *resourceSuite) TestStoreResourceContainerImage(c *gc.C) {
 	retrievedBy := "retrieved-by-app"
 	retrievedByType := resource.Application
 	// Act: store the resource.
-	err := s.state.StoreResource(
+	err := s.state.RecordStoredResource(
 		context.Background(),
 		resID,
 		storeID,
@@ -637,7 +637,7 @@ func (s *resourceSuite) TestStoreResourceContainerImage(c *gc.C) {
 		retrievedByType,
 		false,
 	)
-	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute StoreResource: %v", errors.ErrorStack(err)))
+	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute RecordStoredResource: %v", errors.ErrorStack(err)))
 
 	// Assert: Check that the resource has been linked to the stored blob
 	var foundStorageKey string
@@ -646,11 +646,10 @@ func (s *resourceSuite) TestStoreResourceContainerImage(c *gc.C) {
 SELECT store_storage_key FROM resource_image_store
 WHERE resource_uuid = ?`, resID).Scan(&foundStorageKey)
 	})
-	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Assert) resource_image_store table not updated: %v", errors.ErrorStack(err)))
 	storageKey, err := storeID.ContainerImageMetadataStoreID()
 	c.Assert(err, jc.ErrorIsNil)
 	c.Check(foundStorageKey, gc.Equals, storageKey)
-	c.Check(err, jc.ErrorIsNil, gc.Commentf("(Assert) resource_image_store table not updated: %v", errors.ErrorStack(err)))
 
 	// Assert: Check that retrieved by has been set.
 	var foundRetrievedByType, foundRetrievedBy string
@@ -673,7 +672,7 @@ func (s *resourceSuite) TestStoreResourceFile(c *gc.C) {
 	// Act: store the resource.
 	retrievedBy := "retrieved-by-unit"
 	retrievedByType := resource.Unit
-	err := s.state.StoreResource(
+	err := s.state.RecordStoredResource(
 		context.Background(),
 		resID,
 		storeID,
@@ -681,7 +680,7 @@ func (s *resourceSuite) TestStoreResourceFile(c *gc.C) {
 		retrievedByType,
 		false,
 	)
-	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute StoreResource: %v", errors.ErrorStack(err)))
+	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute RecordStoredResource: %v", errors.ErrorStack(err)))
 
 	// Assert: Check that the resource has been linked to the stored blob
 	var foundStoreUUID string
@@ -690,11 +689,10 @@ func (s *resourceSuite) TestStoreResourceFile(c *gc.C) {
 SELECT store_uuid FROM resource_file_store
 WHERE resource_uuid = ?`, resID).Scan(&foundStoreUUID)
 	})
-	c.Assert(err, jc.ErrorIsNil)
+	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Assert) resource_file_store table not updated: %v", errors.ErrorStack(err)))
 	objectStoreUUID, err := storeID.ObjectStoreUUID()
 	c.Assert(err, jc.ErrorIsNil)
 	c.Check(foundStoreUUID, gc.Equals, objectStoreUUID.String())
-	c.Check(err, jc.ErrorIsNil, gc.Commentf("(Assert) resource_file_store table not updated: %v", errors.ErrorStack(err)))
 
 	// Assert: Check that retrieved by has been set.
 	var foundRetrievedByType, foundRetrievedBy string
@@ -719,7 +717,7 @@ func (s *resourceSuite) TestStoreResourceIncrementCharmModifiedVersion(c *gc.C) 
 	// Act: store the resource and increment the CMV.
 	retrievedBy := "retrieved-by-app"
 	retrievedByType := resource.Application
-	err := s.state.StoreResource(
+	err := s.state.RecordStoredResource(
 		context.Background(),
 		resID,
 		storeID,
@@ -727,11 +725,11 @@ func (s *resourceSuite) TestStoreResourceIncrementCharmModifiedVersion(c *gc.C) 
 		retrievedByType,
 		true,
 	)
-	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute StoreResource: %v", errors.ErrorStack(err)))
+	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute RecordStoredResource: %v", errors.ErrorStack(err)))
 
 	foundCharmModifiedVersion1 := s.getCharmModifiedVersion(c, resID.String())
 
-	err = s.state.StoreResource(
+	err = s.state.RecordStoredResource(
 		context.Background(),
 		resID2,
 		storeID2,
@@ -739,7 +737,7 @@ func (s *resourceSuite) TestStoreResourceIncrementCharmModifiedVersion(c *gc.C) 
 		retrievedByType,
 		true,
 	)
-	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute StoreResource: %v", errors.ErrorStack(err)))
+	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute RecordStoredResource: %v", errors.ErrorStack(err)))
 
 	foundCharmModifiedVersion2 := s.getCharmModifiedVersion(c, resID2.String())
 
@@ -756,7 +754,7 @@ func (s *resourceSuite) TestStoreResourceDoNotIncrementCharmModifiedVersion(c *g
 	// Act: store the resource.
 	retrievedBy := "retrieved-by-app"
 	retrievedByType := resource.Application
-	err := s.state.StoreResource(
+	err := s.state.RecordStoredResource(
 		context.Background(),
 		resID,
 		storeID,
@@ -764,7 +762,7 @@ func (s *resourceSuite) TestStoreResourceDoNotIncrementCharmModifiedVersion(c *g
 		retrievedByType,
 		false,
 	)
-	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute StoreResource: %v", errors.ErrorStack(err)))
+	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute RecordStoredResource: %v", errors.ErrorStack(err)))
 
 	// Assert: Check the charm modified version has not been incremented.
 	foundCharmModifiedVersion := s.getCharmModifiedVersion(c, resID.String())
@@ -783,7 +781,7 @@ func (s *resourceSuite) TestStoreResourceContainerImageAlreadyStored(c *gc.C) {
 	// Arrange: store the first resource.
 	retrievedBy := "retrieved-by-app"
 	retrievedByType := resource.Application
-	err = s.state.StoreResource(
+	err = s.state.RecordStoredResource(
 		context.Background(),
 		resID,
 		storeID1,
@@ -791,10 +789,10 @@ func (s *resourceSuite) TestStoreResourceContainerImageAlreadyStored(c *gc.C) {
 		retrievedByType,
 		false,
 	)
-	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute StoreResource: %v", errors.ErrorStack(err)))
+	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute RecordStoredResource: %v", errors.ErrorStack(err)))
 
 	// Act: try to store a second resource.
-	err = s.state.StoreResource(
+	err = s.state.RecordStoredResource(
 		context.Background(),
 		resID,
 		storeID2,
@@ -817,7 +815,7 @@ func (s *resourceSuite) TestStoreFileResourceAlreadyStored(c *gc.C) {
 	// Arrange: store the first resource.
 	retrievedBy := "retrieved-by-unit"
 	retrievedByType := resource.Unit
-	err = s.state.StoreResource(
+	err = s.state.RecordStoredResource(
 		context.Background(),
 		resID,
 		storeID1,
@@ -825,10 +823,10 @@ func (s *resourceSuite) TestStoreFileResourceAlreadyStored(c *gc.C) {
 		retrievedByType,
 		false,
 	)
-	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute StoreResource: %v", errors.ErrorStack(err)))
+	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute RecordStoredResource: %v", errors.ErrorStack(err)))
 
 	// Act: try and store the second resource.
-	err = s.state.StoreResource(
+	err = s.state.RecordStoredResource(
 		context.Background(),
 		resID,
 		storeID2,
@@ -847,7 +845,7 @@ func (s *resourceSuite) TestStoreResourceResourceNotFound(c *gc.C) {
 	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Arrange) failed to add object store blob: %v", errors.ErrorStack(err)))
 
 	// Act: try and store the resource.
-	err = s.state.StoreResource(
+	err = s.state.RecordStoredResource(
 		context.Background(),
 		"bad-uuid",
 		storeID,
@@ -867,7 +865,7 @@ func (s *resourceSuite) TestStoreResourceFileStoredResourceNotFound(c *gc.C) {
 	storeID := resourcestoretesting.GenFileResourceStoreID(c, objectStoreUUID)
 
 	// Act: try and store the resource.
-	err := s.state.StoreResource(
+	err := s.state.RecordStoredResource(
 		context.Background(),
 		resID,
 		storeID,
@@ -884,7 +882,7 @@ func (s *resourceSuite) TestStoreResourceContainerImageStoredResourceNotFound(c 
 	storeID := resourcestoretesting.GenContainerImageMetadataResourceID(c, "bad-storage-key")
 
 	// Act: try and store the resource.
-	err := s.state.StoreResource(
+	err := s.state.RecordStoredResource(
 		context.Background(),
 		resID,
 		storeID,
@@ -900,7 +898,7 @@ func (s *resourceSuite) TestStoreRetrievedByUnit(c *gc.C) {
 	retrievedBy := "app-test/0"
 	retrievedByType := resource.Unit
 	err := s.setWithRetrievedBy(c, resourceUUID, retrievedBy, retrievedByType)
-	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute StoreResource: %v", errors.ErrorStack(err)))
+	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute RecordStoredResource: %v", errors.ErrorStack(err)))
 	foundRetrievedBy, foundRetrievedByType := s.getRetrievedByType(c, resourceUUID)
 	c.Check(foundRetrievedBy, gc.Equals, retrievedBy)
 	c.Check(foundRetrievedByType, gc.Equals, retrievedByType)
@@ -911,7 +909,7 @@ func (s *resourceSuite) TestStoreRetrievedByApplication(c *gc.C) {
 	retrievedBy := "app-test"
 	retrievedByType := resource.Application
 	err := s.setWithRetrievedBy(c, resourceUUID, retrievedBy, retrievedByType)
-	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute StoreResource: %v", errors.ErrorStack(err)))
+	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute RecordStoredResource: %v", errors.ErrorStack(err)))
 	foundRetrievedBy, foundRetrievedByType := s.getRetrievedByType(c, resourceUUID)
 	c.Check(foundRetrievedBy, gc.Equals, retrievedBy)
 	c.Check(foundRetrievedByType, gc.Equals, retrievedByType)
@@ -922,7 +920,7 @@ func (s *resourceSuite) TestStoreRetrievedByUser(c *gc.C) {
 	retrievedBy := "jim"
 	retrievedByType := resource.User
 	err := s.setWithRetrievedBy(c, resourceUUID, retrievedBy, retrievedByType)
-	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute StoreResource: %v", errors.ErrorStack(err)))
+	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) failed to execute RecordStoredResource: %v", errors.ErrorStack(err)))
 	foundRetrievedBy, foundRetrievedByType := s.getRetrievedByType(c, resourceUUID)
 	c.Check(foundRetrievedBy, gc.Equals, retrievedBy)
 	c.Check(foundRetrievedByType, gc.Equals, retrievedByType)
@@ -1471,7 +1469,7 @@ func (s *resourceSuite) setWithRetrievedBy(
 	err := s.addObjectStoreBlobMetadata(objectStoreUUID)
 	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Arrange) failed to add object store blob: %v", errors.ErrorStack(err)))
 
-	return s.state.StoreResource(
+	return s.state.RecordStoredResource(
 		context.Background(),
 		resourceUUID,
 		storeID,

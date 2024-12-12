@@ -24,7 +24,7 @@ type resourceIdentity struct {
 
 // resourceKind is the kind of the resource, e.g. file or oci-image.
 type resourceKind struct {
-	Name string `db:"name"`
+	Name string `db:"kind_name"`
 	UUID string `db:"uuid"`
 }
 

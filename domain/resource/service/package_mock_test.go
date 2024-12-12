@@ -353,9 +353,9 @@ func (c *MockStateSetUnitResourceCall) DoAndReturn(f func(context.Context, resou
 }
 
 // StoreResource mocks base method.
-func (m *MockState) StoreResource(arg0 context.Context, arg1 resource.UUID, arg2 store.ID, arg3 string, arg4 resource0.RetrievedByType, arg5 bool) error {
+func (m *MockState) RecordStoredResource(arg0 context.Context, arg1 resource.UUID, arg2 store.ID, arg3 string, arg4 resource0.RetrievedByType, arg5 bool) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StoreResource", arg0, arg1, arg2, arg3, arg4, arg5)
+	ret := m.ctrl.Call(m, "RecordStoredResource", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
@@ -363,7 +363,7 @@ func (m *MockState) StoreResource(arg0 context.Context, arg1 resource.UUID, arg2
 // StoreResource indicates an expected call of StoreResource.
 func (mr *MockStateMockRecorder) StoreResource(arg0, arg1, arg2, arg3, arg4, arg5 any) *MockStateStoreResourceCall {
 	mr.mock.ctrl.T.Helper()
-	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StoreResource", reflect.TypeOf((*MockState)(nil).StoreResource), arg0, arg1, arg2, arg3, arg4, arg5)
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordStoredResource", reflect.TypeOf((*MockState)(nil).RecordStoredResource), arg0, arg1, arg2, arg3, arg4, arg5)
 	return &MockStateStoreResourceCall{Call: call}
 }
 
