@@ -14,6 +14,15 @@ import (
 	charmresource "github.com/juju/juju/internal/charm/resource"
 )
 
+// State indicates if a resource is downloaded onto the controller
+// (available), or known to be available on charmhub (potential).
+type State string
+
+const (
+	StatePotential = "potential"
+	StateAvailable = "available"
+)
+
 // GetApplicationResourceIDArgs holds the arguments for the
 // GetApplicationResourceID method.
 type GetApplicationResourceIDArgs struct {
@@ -82,4 +91,43 @@ type RecordStoredResourceArgs struct {
 	Origin charmresource.Origin
 	// Revision indicates the resource revision.
 	Revision int
+}
+
+// SetResourcesArgs are the arguments for SetResource.
+type SetResourcesArgs []SetResourcesArg
+
+// SetResourcesArg is a single argument for the SetResources method.
+type SetResourcesArg struct {
+	// ApplicationName is the name of the application these resources are
+	// associated with.
+	ApplicationName string
+	// ApplicationResources are the available resources on the application.
+	Resources []SetResourceInfo
+	// UnitResources contains information about the units using the resources in
+	// ApplicationResources.
+	UnitResources []SetUnitResourceInfo
+}
+
+// SetResourceInfo contains information about a single resource for the
+// SetResources method.
+type SetResourceInfo struct {
+	// Name is the name of the resource.
+	Name string
+	// Origin identifies where the resource will come from.
+	Origin charmresource.Origin
+	// Revision is the charm store revision of the resource.
+	Revision int
+	// Timestamp is the time the resource was added to the model.
+	Timestamp time.Time
+}
+
+// SetUnitResourceInfo contains information about a single unit resource for the
+// SetResources method.
+type SetUnitResourceInfo struct {
+	// ResourceName is the name of the resource.
+	ResourceName string
+	// UnitName is the name of the unit using the resource.
+	UnitName string
+	// Timestamp is the time the resource was added to the model.
+	Timestamp time.Time
 }

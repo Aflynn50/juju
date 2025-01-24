@@ -69,4 +69,7 @@ const (
 	// ApplicationNameNotValid describes an error when the application is
 	// not valid.
 	ApplicationNameNotValid = errors.ConstError("application name not valid")
+
+	// OriginNotValid describes an error where the resource origin is invalid
+	OriginNotValid = errors.ConstError("origin not valid")
 )

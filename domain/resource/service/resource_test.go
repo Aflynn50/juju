@@ -1034,6 +1034,113 @@ func (s *resourceServiceSuite) TestSetRepositoryResourcesApplicationInvalidInfo(
 	c.Assert(err, jc.ErrorIs, resourceerrors.ArgumentNotValid)
 }
 
+func (s *resourceServiceSuite) TestSetResources(c *gc.C) {
+	defer s.setupMocks(c).Finish()
+
+	// Arrange: Create arguments for SetResources.
+	args := []resource.SetResourcesArg{{
+		ApplicationName: "app-name-1",
+		Resources: []resource.SetResourceInfo{{
+			Name:      "app-1-resource-1",
+			Origin:    charmresource.OriginStore,
+			Revision:  3,
+			Timestamp: time.Now().Truncate(time.Second).UTC(),
+		}, {
+			Name:      "app-1-resource-2",
+			Origin:    charmresource.OriginUpload,
+			Revision:  -1,
+			Timestamp: time.Now().Truncate(time.Second).UTC(),
+		}},
+		UnitResources: []resource.SetUnitResourceInfo{{
+			ResourceName: "app-1-resource-1",
+			UnitName:     "unit-name",
+			Timestamp:    time.Now().Truncate(time.Second).UTC(),
+		}, {
+			ResourceName: "app-1-resource-2",
+			UnitName:     "unit-name",
+			Timestamp:    time.Now().Truncate(time.Second).UTC(),
+		}},
+	}, {
+		ApplicationName: "app-name-2",
+		Resources: []resource.SetResourceInfo{{
+			Name:      "app-2-resource-1",
+			Origin:    charmresource.OriginStore,
+			Revision:  2,
+			Timestamp: time.Now().Truncate(time.Second).UTC(),
+		}},
+	}}
+
+	s.state.EXPECT().SetResources(gomock.Any(), args)
+
+	// Act:
+	err := s.service.SetResources(context.Background(), args)
+	c.Assert(err, jc.ErrorIsNil)
+}
+
+func (s *resourceServiceSuite) TestSetResourceResourceNotFound(c *gc.C) {
+	defer s.setupMocks(c).Finish()
+
+	s.state.EXPECT().SetResources(gomock.Any(), gomock.Any()).Return(resourceerrors.ResourceNotFound)
+
+	err := s.service.SetResources(context.Background(), nil)
+	c.Assert(err, jc.ErrorIs, resourceerrors.ResourceNotFound)
+}
+
+func (s *resourceServiceSuite) TestSetResourceApplicationNotFound(c *gc.C) {
+	defer s.setupMocks(c).Finish()
+
+	s.state.EXPECT().SetResources(gomock.Any(), gomock.Any()).Return(resourceerrors.ApplicationNotFound)
+
+	err := s.service.SetResources(context.Background(), nil)
+	c.Assert(err, jc.ErrorIs, resourceerrors.ApplicationNotFound)
+}
+
+func (s *resourceServiceSuite) TestSetResourceUnitNotFound(c *gc.C) {
+	defer s.setupMocks(c).Finish()
+
+	s.state.EXPECT().SetResources(gomock.Any(), gomock.Any()).Return(resourceerrors.UnitNotFound)
+
+	err := s.service.SetResources(context.Background(), nil)
+	c.Assert(err, jc.ErrorIs, resourceerrors.UnitNotFound)
+}
+
+func (s *resourceServiceSuite) TestSetResourceOriginNotValid(c *gc.C) {
+	defer s.setupMocks(c).Finish()
+
+	// Arrange: Create arguments for SetResources.
+	args := []resource.SetResourcesArg{{
+		ApplicationName: "app-name",
+		Resources: []resource.SetResourceInfo{{
+			Name:   "resource-name",
+			Origin: 0,
+		}},
+	}}
+
+	// Act:
+	err := s.service.SetResources(context.Background(), args)
+
+	// Assert:
+	c.Assert(err, jc.ErrorIs, resourceerrors.OriginNotValid)
+}
+
+func (s *resourceServiceSuite) TestSetResourceResourceNameNotValid(c *gc.C) {
+	defer s.setupMocks(c).Finish()
+
+	// Arrange: Create arguments for SetResources.
+	args := []resource.SetResourcesArg{{
+		ApplicationName: "app-name",
+		Resources: []resource.SetResourceInfo{{
+			Name: "",
+		}},
+	}}
+
+	// Act:
+	err := s.service.SetResources(context.Background(), args)
+
+	// Assert:
+	c.Assert(err, jc.ErrorIs, resourceerrors.ResourceNameNotValid)
+}
+
 func (s *resourceServiceSuite) setupMocks(c *gc.C) *gomock.Controller {
 	ctrl := gomock.NewController(c)
 

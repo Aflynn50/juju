@@ -470,6 +470,44 @@ func (c *MockStateSetRepositoryResourcesCall) DoAndReturn(f func(context.Context
 	return c
 }
 
+// SetResources mocks base method.
+func (m *MockState) SetResources(arg0 context.Context, arg1 resource0.SetResourcesArgs) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetResources", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetResources indicates an expected call of SetResources.
+func (mr *MockStateMockRecorder) SetResources(arg0, arg1 any) *MockStateSetResourcesCall {
+	mr.mock.ctrl.T.Helper()
+	call := mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetResources", reflect.TypeOf((*MockState)(nil).SetResources), arg0, arg1)
+	return &MockStateSetResourcesCall{Call: call}
+}
+
+// MockStateSetResourcesCall wrap *gomock.Call
+type MockStateSetResourcesCall struct {
+	*gomock.Call
+}
+
+// Return rewrite *gomock.Call.Return
+func (c *MockStateSetResourcesCall) Return(arg0 error) *MockStateSetResourcesCall {
+	c.Call = c.Call.Return(arg0)
+	return c
+}
+
+// Do rewrite *gomock.Call.Do
+func (c *MockStateSetResourcesCall) Do(f func(context.Context, resource0.SetResourcesArgs) error) *MockStateSetResourcesCall {
+	c.Call = c.Call.Do(f)
+	return c
+}
+
+// DoAndReturn rewrite *gomock.Call.DoAndReturn
+func (c *MockStateSetResourcesCall) DoAndReturn(f func(context.Context, resource0.SetResourcesArgs) error) *MockStateSetResourcesCall {
+	c.Call = c.Call.DoAndReturn(f)
+	return c
+}
+
 // SetUnitResource mocks base method.
 func (m *MockState) SetUnitResource(arg0 context.Context, arg1 resource.UUID, arg2 unit.UUID) error {
 	m.ctrl.T.Helper()

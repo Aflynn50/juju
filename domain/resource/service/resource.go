@@ -101,6 +101,20 @@ type State interface {
 	// application to the provided values. The current data for this
 	// application/resource combination will be overwritten.
 	SetRepositoryResources(ctx context.Context, config resource.SetRepositoryResourcesArgs) error
+
+	// SetResources sets resources imported in migration. It first builds all the
+	// resources to insert from the arguments, then inserts them at the end so as to
+	// wait as long as possible before turning into a write transaction.
+	//
+	// The following error types can be expected to be returned:
+	//   - [resourceerrors.ResourceNotFound] if the resource metadata cannot be
+	//     found on the charm.
+	//   - [resourceerrors.ApplicationNotFound] if the application name of an
+	//     application resource cannot be found in the database.
+	//   - [resourceerrors.UnitNotFound] if the unit name of a unit resource cannot
+	//     be found in the database.
+	//   - [resourceerrors.OriginNotValid] if the resource origin is not valid.
+	SetResources(ctx context.Context, args resource.SetResourcesArgs) error
 }
 
 type ResourceStoreGetter interface {
@@ -546,6 +560,36 @@ func (s *Service) SetRepositoryResources(
 		return errors.Errorf("zero LastPolled: %w", resourceerrors.ArgumentNotValid)
 	}
 	return s.st.SetRepositoryResources(ctx, args)
+}
+
+// SetResources sets resources imported in migration. It first builds all the
+// resources to insert from the arguments, then inserts them at the end so as to
+// wait as long as possible before turning into a write transaction.
+//
+// The following error types can be expected to be returned:
+//   - [resourceerrors.ResourceNotFound] if the resource metadata cannot be
+//     found on the charm.
+//   - [resourceerrors.ApplicationNotFound] if the application name of an
+//     application resource cannot be found in the database.
+//   - [resourceerrors.UnitNotFound] if the unit name of a unit resource cannot
+//     be found in the database.
+//   - [resourceerrors.OriginNotValid] if the resource origin is not valid.
+func (s *Service) SetResources(ctx context.Context, args resource.SetResourcesArgs) error {
+	for _, appArg := range args {
+		for _, res := range appArg.Resources {
+			if res.Name == "" {
+				return errors.Errorf("resource on application %s: %w",
+					appArg.ApplicationName, resourceerrors.ResourceNameNotValid)
+			}
+
+			err := res.Origin.Validate()
+			if err != nil {
+				return errors.Errorf("origin %s of resource %s on application %s: %w",
+					res.Origin, res.Name, appArg.ApplicationName, resourceerrors.OriginNotValid)
+			}
+		}
+	}
+	return s.st.SetResources(ctx, args)
 }
 
 // Store the resource with a path made up of the UUID and the resource

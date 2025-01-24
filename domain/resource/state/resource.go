@@ -15,6 +15,7 @@ import (
 	"github.com/juju/collections/set"
 
 	"github.com/juju/juju/core/application"
+	"github.com/juju/juju/core/charm"
 	"github.com/juju/juju/core/database"
 	"github.com/juju/juju/core/logger"
 	coreresource "github.com/juju/juju/core/resource"
@@ -1354,6 +1355,543 @@ WHERE uuid = $updatePotentialResource.uuid
 		return nil
 	})
 	return errors.Capture(err)
+}
+
+// SetResources sets resources imported in migration. It first builds all the
+// resources to insert from the arguments, then inserts them at the end so as to
+// wait as long as possible before turning into a write transaction.
+//
+// The following error types can be expected to be returned:
+//   - [resourceerrors.ResourceNotFound] if the resource metadata cannot be
+//     found on the charm.
+//   - [resourceerrors.ApplicationNotFound] if the application name of an
+//     application resource cannot be found in the database.
+//   - [resourceerrors.UnitNotFound] if the unit name of a unit resource cannot
+//     be found in the database.
+func (st *State) SetResources(ctx context.Context, args resource.SetResourcesArgs) error {
+	if len(args) == 0 {
+		return nil
+	}
+
+	db, err := st.DB()
+	if err != nil {
+		return errors.Capture(err)
+	}
+
+	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+		typeIDs, err := st.getTypeIDs(ctx, tx)
+		if err != nil {
+			return errors.Errorf("getting type IDs from database: %w", err)
+		}
+
+		resourcesToSet := &resourcesToSet{}
+		for _, arg := range args {
+			toSet, err := st.getResourcesToSetForApplication(ctx, tx, typeIDs, arg)
+			if err != nil {
+				return errors.Errorf("setting resources for application %s: %w", arg.ApplicationName, err)
+			}
+			resourcesToSet.append(toSet)
+		}
+
+		err = st.insertResources(ctx, tx, resourcesToSet)
+		if err != nil {
+			return errors.Errorf("inserting resources: %w", err)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return errors.Capture(err)
+	}
+	return nil
+}
+
+// typeIDs holds metadata about the IDs used in the database for certain types.
+type typeIDs struct {
+	// originToID maps the names of resource origins to the integer used to
+	// represent them in the database.
+	originToID map[string]int
+	// stateAvailableID is the ID of the available state in the database.
+	stateAvailableID int
+	// statePotential is the ID of the potential state in the database.
+	statePotentialID int
+}
+
+// getTypeIDs fetches the metadata about the IDs for certain types.
+func (st *State) getTypeIDs(ctx context.Context, tx *sqlair.TX) (typeIDs, error) {
+	origins, err := st.getOriginIDs(ctx, tx)
+	if err != nil {
+		return typeIDs{}, errors.Errorf("getting origin ids: %w", err)
+	}
+
+	states, err := st.getStateIDs(ctx, tx)
+	if err != nil {
+		return typeIDs{}, errors.Errorf("getting state ids: %w", err)
+	}
+
+	stateAvailableID, ok := states[resource.StateAvailable]
+	if !ok {
+		return typeIDs{}, errors.Errorf("state %s not found in database", resource.StateAvailable)
+	}
+
+	statePotentialID, ok := states[resource.StatePotential]
+	if !ok {
+		return typeIDs{}, errors.Errorf("state %s not found in database", resource.StatePotential)
+	}
+
+	ids := typeIDs{
+		originToID:       origins,
+		stateAvailableID: stateAvailableID,
+		statePotentialID: statePotentialID,
+	}
+	return ids, nil
+}
+
+// resourcesToSet holds the resource structures to insert into the database.
+// This allows all resources to be inserted in one go at the end of a
+// transaction.
+type resourcesToSet struct {
+	resources                      []setResource
+	applicationResources           []applicationResource
+	unitResources                  []unitResource
+	kubernetesApplicationResources []kubernetesApplicationResource
+}
+
+// append appends all slices in the another resourcesToSet struct to this one.
+func (toSet *resourcesToSet) append(otherToSet resourcesToSet) {
+	toSet.resources = append(
+		toSet.resources, otherToSet.resources...,
+	)
+	toSet.applicationResources = append(
+		toSet.applicationResources, otherToSet.applicationResources...,
+	)
+	toSet.unitResources = append(
+		toSet.unitResources, otherToSet.unitResources...,
+	)
+	toSet.kubernetesApplicationResources = append(
+		toSet.kubernetesApplicationResources, otherToSet.kubernetesApplicationResources...,
+	)
+}
+
+// getResourcesToSetForApplication gets all the resources to set for a
+// particular application from the arguments, and checks that their charm
+// resources exist.
+func (st *State) getResourcesToSetForApplication(
+	ctx context.Context,
+	tx *sqlair.TX,
+	typeIDs typeIDs,
+	args resource.SetResourcesArg,
+) (toSet resourcesToSet, err error) {
+	appID, charmID, err := st.getApplicationAndCharmUUID(ctx, tx, args.ApplicationName)
+	if err != nil {
+		return toSet, errors.Errorf("getting ID for application %q: %w", args.ApplicationName, err)
+	}
+
+	// Get resources to set.
+	toSet, resourceNameToUUID, err := st.getResourcesToSet(
+		ctx, tx, typeIDs, charmID, appID, args.Resources,
+	)
+	if err != nil {
+		return toSet, errors.Capture(err)
+	}
+
+	// If the charm is not local, add a repository resource placeholders and
+	// link them to the application.
+	if isLocal, err := st.isLocalCharm(ctx, tx, charmID); err != nil {
+		return toSet, errors.Errorf("checking if charm %s is local: %w", charmID, err)
+	} else if !isLocal {
+		repoResources, repoAppResources, err := st.getRepositoryResourcePlaceholdersToSet(typeIDs, charmID, appID, args.Resources)
+		if err != nil {
+			return toSet, errors.Capture(err)
+		}
+		// Append the repository resources to the regular resources.
+		toSet.resources = append(toSet.resources, repoResources...)
+		toSet.applicationResources = append(toSet.applicationResources, repoAppResources...)
+	}
+
+	// Get unit resources to set.
+	unitResourcesToSet, err := st.getUnitResourcesToSet(
+		ctx, tx, args.UnitResources, resourceNameToUUID,
+	)
+	if err != nil {
+		return toSet, errors.Errorf("getting unit resources for application %q: %w", args.ApplicationName, err)
+	}
+	toSet.unitResources = append(toSet.unitResources, unitResourcesToSet...)
+
+	return toSet, nil
+}
+
+// getResourcesToSet gets the resources, application resource, and kubernetes
+// resources to set for the given arguments, checking that the charm resources
+// exist for each one.
+func (st *State) getResourcesToSet(
+	ctx context.Context,
+	tx *sqlair.TX,
+	typeIDs typeIDs,
+	charmID charm.ID,
+	appID application.ID,
+	resources []resource.SetResourceInfo,
+) (toSet resourcesToSet, resourceNameToUUID map[string]coreresource.UUID, err error) {
+	resourceNameToUUID = make(map[string]coreresource.UUID)
+	for _, res := range resources {
+		// Check that the charm resource exists and get its kind before we
+		// attempt to set it.
+		kind, err := st.getCharmResourceKind(ctx, tx, charmID, res.Name)
+		if err != nil {
+			return toSet, nil, errors.Errorf("checking resource %s exists on charm: %w", res.Name, err)
+		}
+
+		// Add resource to set.
+		resourceToSet, resourceUUID, err := st.getResourceToSet(typeIDs, charmID, res)
+		if err != nil {
+			return toSet, nil, errors.Capture(err)
+		}
+		toSet.resources = append(toSet.resources, resourceToSet)
+		resourceNameToUUID[res.Name] = resourceUUID
+
+		// Add application resource to set.
+		toSet.applicationResources = append(toSet.applicationResources, applicationResource{
+			ResourceUUID:    resourceUUID.String(),
+			ApplicationUUID: appID.String(),
+		})
+
+		// Add kubernetes application resource to set.
+		if kind == charmresource.TypeContainerImage {
+			// If setting a container image resource, assume it is in use and
+			// set it in the kubernetes_application_resource table.
+			toSet.kubernetesApplicationResources = append(toSet.kubernetesApplicationResources, kubernetesApplicationResource{
+				ResourceUUID: resourceUUID.String(),
+				AddedAt:      res.Timestamp,
+			})
+		}
+
+	}
+	return toSet, resourceNameToUUID, nil
+}
+
+func (st *State) getResourceToSet(typeIDs typeIDs, charmID charm.ID, res resource.SetResourceInfo) (setResource, coreresource.UUID, error) {
+	originID, ok := typeIDs.originToID[res.Origin.String()]
+	if !ok {
+		return setResource{}, "", errors.Errorf("origin %s not found in database: %w",
+			res.Origin, resourceerrors.OriginNotValid)
+	}
+	resourceUUID, err := coreresource.NewUUID()
+	if err != nil {
+		return setResource{}, "", errors.Capture(err)
+	}
+	return setResource{
+		UUID:         resourceUUID.String(),
+		CharmUUID:    charmID.String(),
+		Name:         res.Name,
+		Revision:     &res.Revision,
+		OriginTypeId: originID,
+		StateID:      typeIDs.stateAvailableID,
+		CreatedAt:    res.Timestamp,
+	}, resourceUUID, nil
+}
+
+// getRepositoryResourcePlaceholdersToSet returns a repository resource
+// placeholder to set in the resources table. The resource will have state
+// potential but will only act as a placeholder to be updated in the future, it
+// does not contain revision data.
+func (st *State) getRepositoryResourcePlaceholdersToSet(
+	typeIDs typeIDs,
+	charmID charm.ID,
+	appID application.ID,
+	resources []resource.SetResourceInfo,
+) ([]setResource, []applicationResource, error) {
+	// All repository resources have origin store.
+	storeOriginID, ok := typeIDs.originToID[charmresource.OriginStore.String()]
+	if !ok {
+		return nil, nil, errors.Errorf("origin %s not found in database",
+			charmresource.OriginStore)
+	}
+	var (
+		repoResourcesToSet    []setResource
+		repoAppResourcesToSet []applicationResource
+	)
+	for _, res := range resources {
+		resourceUUID, err := coreresource.NewUUID()
+		if err != nil {
+			return nil, nil, errors.Capture(err)
+		}
+		repoResourcesToSet = append(repoResourcesToSet, setResource{
+			UUID:         resourceUUID.String(),
+			CharmUUID:    charmID.String(),
+			Name:         res.Name,
+			Revision:     nil,
+			OriginTypeId: storeOriginID,
+			StateID:      typeIDs.statePotentialID,
+		})
+		repoAppResourcesToSet = append(repoAppResourcesToSet, applicationResource{
+			ResourceUUID:    resourceUUID.String(),
+			ApplicationUUID: appID.String(),
+		})
+	}
+	return repoResourcesToSet, repoAppResourcesToSet, nil
+}
+
+// getUnitResourcesToSet gets the unit resources to set for the given arguments,
+// checking that the unit exists for each unit resources.
+func (st *State) getUnitResourcesToSet(
+	ctx context.Context,
+	tx *sqlair.TX,
+	unitResources []resource.SetUnitResourceInfo,
+	resourceNameToUUID map[string]coreresource.UUID,
+) ([]unitResource, error) {
+	var unitResourcesToSet []unitResource
+	for _, res := range unitResources {
+		unitUUID, err := st.getUnitUUID(ctx, tx, res.UnitName)
+		if err != nil {
+			return nil, errors.Errorf("getting uuid of unit %q: %w", res.UnitName, err)
+		}
+
+		resUUID, ok := resourceNameToUUID[res.ResourceName]
+		if !ok {
+			return nil, errors.Errorf("unit resource for unknown resource: %q", res.ResourceName)
+		}
+
+		unitResourcesToSet = append(unitResourcesToSet, unitResource{
+			ResourceUUID: resUUID.String(),
+			UnitUUID:     unitUUID.String(),
+			AddedAt:      res.Timestamp,
+		})
+	}
+	return unitResourcesToSet, nil
+}
+
+// insertResources inserts resources, application resources, kubernetes
+// resources and unit resources using bulk inserts.
+func (st *State) insertResources(
+	ctx context.Context,
+	tx *sqlair.TX,
+	toSet *resourcesToSet,
+) error {
+	// Bulk insert the resources.
+	if len(toSet.resources) > 0 {
+		insertStmt, err := st.Prepare(`
+INSERT INTO resource (*) VALUES ($setResource.*)
+`, setResource{})
+		if err != nil {
+			return errors.Capture(err)
+		}
+		err = tx.Query(ctx, insertStmt, toSet.resources).Run()
+		if err != nil {
+			return errors.Errorf("inserting resources: %w", err)
+		}
+	}
+
+	// Bulk insert the application-resource links.
+	if len(toSet.applicationResources) > 0 {
+		insertApplicationResourceStmt, err := st.Prepare(`
+INSERT INTO application_resource (*) VALUES ($applicationResource.*)
+`, applicationResource{})
+		if err != nil {
+			return errors.Capture(err)
+		}
+		err = tx.Query(ctx, insertApplicationResourceStmt, toSet.applicationResources).Run()
+		if err != nil {
+			return errors.Errorf("linking resources to applications: %w", err)
+		}
+	}
+
+	// Bulk insert the kubernetes-application-resource links.
+	if len(toSet.kubernetesApplicationResources) > 0 {
+		insertK8sResourceStmt, err := st.Prepare(`
+INSERT INTO kubernetes_application_resource (*) VALUES ($kubernetesApplicationResource.*)
+`, kubernetesApplicationResource{})
+		if err != nil {
+			return errors.Capture(err)
+		}
+		err = tx.Query(ctx, insertK8sResourceStmt, toSet.kubernetesApplicationResources).Run()
+		if err != nil {
+			return errors.Errorf("linking resources to kubernetes applications: %w", err)
+		}
+	}
+
+	// Bulk insert the unit-resource links.
+	if len(toSet.unitResources) > 0 {
+		insertUnitResourceStmt, err := st.Prepare(`
+INSERT INTO unit_resource (*) VALUES ($unitResource.*)
+`, unitResource{})
+		if err != nil {
+			return errors.Capture(err)
+		}
+		err = tx.Query(ctx, insertUnitResourceStmt, toSet.unitResources).Run()
+		if err != nil {
+			return errors.Errorf("linking resources to units: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// isLocalCharm returns true if the charm uuid belongs to a local charm.
+func (st *State) isLocalCharm(
+	ctx context.Context,
+	tx *sqlair.TX,
+	charmID charm.ID,
+) (bool, error) {
+	source := getCharmSource{
+		UUID: charmID.String(),
+	}
+	getCharmSourceStmt, err := st.Prepare(`
+SELECT cs.name AS &getCharmSource.source_name
+FROM   charm c
+JOIN   charm_source cs ON c.source_id = cs.id
+AND    uuid = $getCharmSource.uuid
+`, source)
+	if err != nil {
+		return false, errors.Capture(err)
+	}
+
+	err = tx.Query(ctx, getCharmSourceStmt, source).Get(&source)
+	if err != nil {
+		return false, errors.Capture(err)
+	}
+
+	return charm.Local.Matches(source.SourceName), nil
+}
+
+// getCharmResourceKind fetches the kind of charm resource and returns
+// [resourceerrors.ResourceNotFound] if it cannot be found.
+func (st *State) getCharmResourceKind(
+	ctx context.Context,
+	tx *sqlair.TX,
+	charmID charm.ID,
+	resourceName string,
+) (charmresource.Type, error) {
+	charmRes := charmResource{
+		CharmUUID:    charmID.String(),
+		ResourceName: resourceName,
+	}
+	checkCharmResourceExistsStmt, err := st.Prepare(`
+SELECT &charmResource.kind
+FROM   v_charm_resource
+WHERE  name       = $charmResource.name
+AND    charm_uuid = $charmResource.charm_uuid
+`, charmRes)
+	if err != nil {
+		return 0, errors.Capture(err)
+	}
+
+	err = tx.Query(ctx, checkCharmResourceExistsStmt, charmRes).Get(&charmRes)
+	if errors.Is(err, sqlair.ErrNoRows) {
+		return 0, resourceerrors.ResourceNotFound
+	} else if err != nil {
+		return 0, errors.Capture(err)
+	}
+
+	kind, err := charmresource.ParseType(charmRes.Kind)
+	if err != nil {
+		return 0, errors.Errorf("parsing resource type %q: %w", charmRes.Kind, err)
+	}
+	return kind, nil
+}
+
+// getAppplicationAndCharmUUID returns gets the application ID and charm UUID
+// for the given application name, returning [resourcerrors.ApplicationNotFound]
+// if it cannot be found.
+func (st *State) getApplicationAndCharmUUID(
+	ctx context.Context,
+	tx *sqlair.TX,
+	applicationName string,
+) (application.ID, charm.ID, error) {
+	app := getApplicationAndCharmID{Name: applicationName}
+	queryApplicationStmt, err := st.Prepare(`
+SELECT (charm_uuid, uuid) AS (&getApplicationAndCharmID.*)
+FROM   application
+WHERE  name = $getApplicationAndCharmID.name
+`, app)
+	if err != nil {
+		return "", "", errors.Capture(err)
+	}
+	err = tx.Query(ctx, queryApplicationStmt, app).Get(&app)
+	if err != nil {
+		if !errors.Is(err, sqlair.ErrNoRows) {
+			return "", "", errors.Capture(err)
+		}
+		return "", "", errors.Errorf("%w: %s", resourceerrors.ApplicationNotFound, applicationName)
+	}
+	return app.ApplicationID, app.CharmID, nil
+
+}
+
+// getOriginIDs returns the database IDs for the origin types.
+func (st *State) getOriginIDs(ctx context.Context, tx *sqlair.TX) (map[string]int, error) {
+	type origin struct {
+		Name string `db:"name"`
+		ID   int    `db:"id"`
+	}
+
+	selectOriginStmt, err := st.Prepare(`
+SELECT &origin.*
+FROM   resource_origin_type
+`, origin{})
+	if err != nil {
+		return nil, errors.Capture(err)
+	}
+
+	var origins []origin
+	err = tx.Query(ctx, selectOriginStmt).GetAll(&origins)
+	if err != nil {
+		return nil, errors.Capture(err)
+	}
+
+	m := make(map[string]int)
+	for _, o := range origins {
+		m[o.Name] = o.ID
+	}
+	return m, nil
+}
+
+// getStateIDs returns the database IDs for the state types.
+func (st *State) getStateIDs(ctx context.Context, tx *sqlair.TX) (map[string]int, error) {
+	type state struct {
+		Name string `db:"name"`
+		ID   int    `db:"id"`
+	}
+
+	selectStateStmt, err := st.Prepare(`
+SELECT &state.*
+FROM   resource_state
+`, state{})
+	if err != nil {
+		return nil, errors.Capture(err)
+	}
+
+	var states []state
+	err = tx.Query(ctx, selectStateStmt).GetAll(&states)
+	if err != nil {
+		return nil, errors.Capture(err)
+	}
+
+	m := make(map[string]int)
+	for _, s := range states {
+		m[s.Name] = s.ID
+	}
+	return m, nil
+}
+
+// getUnitUUID gets the UUID of the unit with the given name, its returns
+// [resourceerrors.UnitNotFound] if the unit cannot be found.
+func (st *State) getUnitUUID(ctx context.Context, tx *sqlair.TX, name string) (coreunit.UUID, error) {
+	unit := unitUUIDAndName{Name: name}
+	getUnitStmt, err := st.Prepare(`
+SELECT &unitUUIDAndName.uuid 
+FROM   unit 
+WHERE  name = $unitUUIDAndName.name
+`, unit)
+	if err != nil {
+		return "", errors.Capture(err)
+	}
+	err = tx.Query(ctx, getUnitStmt, unit).Get(&unit)
+	if errors.Is(err, sqlair.ErrNoRows) {
+		return "", errors.Errorf("unit %q: %w", name, resourceerrors.UnitNotFound)
+	} else if err != nil {
+		return "", errors.Errorf("querying unit %q: %w", name, err)
+	}
+	return coreunit.UUID(unit.UUID), nil
 }
 
 // checkApplicationIDExists checks if an application exists in the database by its UUID.
