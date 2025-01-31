@@ -317,6 +317,34 @@ func validateCreateApplicationParams(
 	resolvedResources ResolvedResources,
 	logger logger.Logger,
 ) error {
+
+	err := validateCharmAndApplicationParams(
+		name,
+		referenceName,
+		charm,
+		origin,
+		downloadInfo,
+		logger,
+	)
+	if err != nil {
+		return internalerrors.Capture(err)
+	}
+
+	err = validateResolvedResources(charm, resolvedResources)
+	if err != nil {
+		return internalerrors.Capture(err)
+	}
+
+	return nil
+}
+
+func validateCharmAndApplicationParams(
+	name, referenceName string,
+	charm internalcharm.Charm,
+	origin corecharm.Origin,
+	downloadInfo *domaincharm.DownloadInfo,
+	logger logger.Logger,
+) error {
 	if !isValidApplicationName(name) {
 		return applicationerrors.ApplicationNameNotValid
 	}
@@ -355,6 +383,10 @@ func validateCreateApplicationParams(
 		return fmt.Errorf("%w: %v", applicationerrors.CharmOriginNotValid, err)
 	}
 
+	return nil
+}
+
+func validateResolvedResources(charm internalcharm.Charm, resolvedResources ResolvedResources) error {
 	// Validate consistency of resources origin and revision
 	if err := resolvedResources.Validate(); err != nil {
 		return err
