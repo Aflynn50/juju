@@ -6,10 +6,12 @@ package apiserver
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/juju/errors"
@@ -22,6 +24,7 @@ import (
 	coreresource "github.com/juju/juju/core/resource"
 	"github.com/juju/juju/core/unit"
 	domainresource "github.com/juju/juju/domain/resource"
+	charmresource "github.com/juju/juju/internal/charm/resource"
 	"github.com/juju/juju/rpc/params"
 )
 
@@ -255,6 +258,8 @@ func (s *resourcesUploadSuite) TestServeUploadApplicationStoreResourceError(c *g
 	s.resourceService.EXPECT().GetApplicationResourceID(gomock.Any(), gomock.Any()).Return("res-uuid", nil)
 	s.resourceService.EXPECT().StoreResource(gomock.Any(), gomock.Any()).Return(errors.New("cannot store resource"))
 
+	_, _, _, _ = s.setQueryHeaders(c, query)
+
 	// Act
 	response, err := http.Post(s.srv.URL+migrateResourcesPrefix+"?"+query.Encode(), "application/octet-stream", nil)
 	c.Assert(err, jc.ErrorIsNil, gc.Commentf("(Act) unexpected error while executing request"))
@@ -278,6 +283,8 @@ func (s *resourcesUploadSuite) TestServeUploadApplicationGetResourceError(c *gc.
 	s.resourceService.EXPECT().StoreResource(gomock.Any(), gomock.Any()).Return(nil)
 	s.resourceService.EXPECT().GetResource(gomock.Any(), gomock.Any()).Return(coreresource.Resource{}, errors.New(
 		"cannot get resource"))
+
+	_, _, _, _ = s.setQueryHeaders(c, query)
 
 	// Act
 	response, err := http.Post(s.srv.URL+migrateResourcesPrefix+"?"+query.Encode(), "application/octet-stream", nil)
@@ -337,6 +344,8 @@ func (s *resourcesUploadSuite) TestServeUploadApplication(c *gc.C) {
 	})
 	query.Add("timestamp", "not-placeholder")
 
+	origin, revision, size, fp := s.setQueryHeaders(c, query)
+
 	s.resourceService.EXPECT().GetApplicationResourceID(gomock.Any(), domainresource.GetApplicationResourceIDArgs{
 		ApplicationID: "testapp-id",
 		Name:          "test",
@@ -346,6 +355,10 @@ func (s *resourcesUploadSuite) TestServeUploadApplication(c *gc.C) {
 		Reader:          http.NoBody,
 		RetrievedBy:     "testapp-id",
 		RetrievedByType: coreresource.Application,
+		Size:            size,
+		Fingerprint:     fp,
+		Origin:          origin,
+		Revision:        revision,
 	}).Return(nil)
 	s.resourceService.EXPECT().GetResource(gomock.Any(), resource.UUID("res-uuid")).Return(coreresource.Resource{
 		UUID:      "res-uuid",
@@ -423,6 +436,8 @@ func (s *resourcesUploadSuite) TestServeUploadUnit(c *gc.C) {
 	})
 	query.Add("timestamp", "not-placeholder")
 
+	origin, revision, size, fp := s.setQueryHeaders(c, query)
+
 	s.resourceService.EXPECT().GetApplicationResourceID(gomock.Any(), domainresource.GetApplicationResourceIDArgs{
 		ApplicationID: "testapp-id",
 		Name:          "test",
@@ -434,6 +449,10 @@ func (s *resourcesUploadSuite) TestServeUploadUnit(c *gc.C) {
 		Reader:          http.NoBody,
 		RetrievedBy:     "testunit-id",
 		RetrievedByType: coreresource.Unit,
+		Size:            size,
+		Fingerprint:     fp,
+		Origin:          origin,
+		Revision:        revision,
 	}).Return(nil)
 	s.resourceService.EXPECT().GetResource(gomock.Any(), resource.UUID("res-uuid")).Return(coreresource.Resource{
 		UUID:      "res-uuid",
@@ -549,6 +568,23 @@ func (s *resourcesUploadSuite) setupMocks(c *gc.C) *gomock.Controller {
 	s.resourceService = NewMockResourceService(ctrl)
 
 	return ctrl
+}
+
+func (s *resourcesUploadSuite) setQueryHeaders(c *gc.C, query url.Values) (
+	origin charmresource.Origin, revision int, size int64, fp charmresource.Fingerprint,
+) {
+	content := "resource-content"
+	origin = charmresource.OriginStore
+	revision = 3
+	size = int64(len(content))
+	fp, err := charmresource.GenerateFingerprint(strings.NewReader(content))
+	c.Assert(err, jc.ErrorIsNil)
+	query.Add("origin", origin.String())
+	query.Add("revision", fmt.Sprint(revision))
+	query.Add("size", fmt.Sprint(size))
+	query.Add("fingerprint", fp.Hex())
+
+	return origin, revision, size, fp
 }
 
 type Finisher interface {

@@ -363,13 +363,13 @@ func (s *Service) storeResource(
 	}
 	if args.Origin == charmresource.OriginUpload && args.Revision != -1 {
 		return errors.Errorf(
-			"resource with origin upload must have revision -1, found %d: %w",
+			"resource with origin upload must have positive -1, found %d: %w",
 			args.Revision, resourceerrors.ResourceRevisionNotValid,
 		)
 	}
 	if args.Origin == charmresource.OriginStore && args.Revision < 0 {
 		return errors.Errorf(
-			"resource with origin upload must have positive revision, found %d, %w",
+			"resource with origin store must have positive revision, found %d, %w",
 			args.Revision, resourceerrors.ResourceRevisionNotValid,
 		)
 	}
