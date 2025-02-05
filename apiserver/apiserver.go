@@ -38,6 +38,8 @@ import (
 	"github.com/juju/juju/apiserver/httpcontext"
 	"github.com/juju/juju/apiserver/internal/handlers/objects"
 	handlerspubsub "github.com/juju/juju/apiserver/internal/handlers/pubsub"
+	"github.com/juju/juju/apiserver/internal/handlers/resources"
+	handlersresources "github.com/juju/juju/apiserver/internal/handlers/resources"
 	"github.com/juju/juju/apiserver/logsink"
 	"github.com/juju/juju/apiserver/observer"
 	"github.com/juju/juju/apiserver/stateauthenticator"
@@ -815,10 +817,11 @@ func (srv *Server) endpoints() ([]apihttp.Endpoint, error) {
 		}
 		return nil
 	}
-	resourcesHandler := srv.monitoredHandler(NewResourceHandler(
+	resourcesHandler := srv.monitoredHandler(resources.NewResourceHandler(
 		resourceAuthFunc,
 		resourceChangeAllowedFunc,
 		&resourceServiceGetter{ctxt: httpCtxt},
+		logger,
 	), "applications")
 	unitResourceNewOpenerFunc := resourceOpenerGetter(func(req *http.Request, tagKinds ...string) (coreresource.Opener, error) {
 		st, _, err := httpCtxt.stateForRequestAuthenticatedTag(req, tagKinds...)
@@ -860,8 +863,9 @@ func (srv *Server) endpoints() ([]apihttp.Endpoint, error) {
 		}
 		return opener, nil
 	})
-	unitResourcesHandler := srv.monitoredHandler(NewUnitResourcesHandler(
+	unitResourcesHandler := srv.monitoredHandler(resources.NewUnitResourcesHandler(
 		unitResourceNewOpenerFunc,
+		logger,
 	), "units")
 
 	controllerAdminAuthorizer := controllerAdminAuthorizer{
@@ -877,10 +881,11 @@ func (srv *Server) endpoints() ([]apihttp.Endpoint, error) {
 		ctxt:          httpCtxt,
 		stateAuthFunc: httpCtxt.stateForMigrationImporting,
 	}, "tools")
-	resourcesMigrationUploadHandler := srv.monitoredHandler(&resourcesMigrationUploadHandler{
-		resourceServiceGetter:    &migratingResourceServiceGetter{ctxt: httpCtxt},
-		applicationServiceGetter: &migratingApplicationServiceGetter{ctxt: httpCtxt},
-	}, "applications")
+	resourcesMigrationUploadHandler := srv.monitoredHandler(handlersresources.NewResourceMigrationUploadHandler(
+		&migratingApplicationServiceGetter{ctxt: httpCtxt},
+		&migratingResourceServiceGetter{ctxt: httpCtxt},
+		logger,
+	), "applications")
 	registerHandler := srv.monitoredHandler(&registerUserHandler{
 		ctxt: httpCtxt,
 	}, "register")
@@ -1277,7 +1282,7 @@ type migratingApplicationServiceGetter struct {
 	ctxt httpContext
 }
 
-func (a *migratingApplicationServiceGetter) Application(r *http.Request) (ApplicationService, error) {
+func (a *migratingApplicationServiceGetter) Application(r *http.Request) (resources.ApplicationService, error) {
 	domainServices, err := a.ctxt.domainServicesDuringMigrationForRequest(r)
 	if err != nil {
 		return nil, internalerrors.Capture(err)
@@ -1295,4 +1300,35 @@ func (a *migratingObjectsApplicationServiceGetter) Application(r *http.Request) 
 		return nil, internalerrors.Capture(err)
 	}
 	return domainServices.Application(), nil
+}
+
+type resourceServiceGetter struct {
+	ctxt httpContext
+}
+
+func (a *resourceServiceGetter) Resource(r *http.Request) (handlersresources.ResourceService, error) {
+	domainServices, err := a.ctxt.domainServicesForRequest(r.Context())
+	if err != nil {
+		return nil, errors.Trace(err)
+	}
+
+	return domainServices.Resource(), nil
+}
+
+type migratingResourceServiceGetter struct {
+	ctxt httpContext
+}
+
+func (a *migratingResourceServiceGetter) Resource(r *http.Request) (handlersresources.ResourceService, error) {
+	domainServices, err := a.ctxt.domainServicesDuringMigrationForRequest(r)
+	if err != nil {
+		return nil, internalerrors.Capture(err)
+	}
+	return domainServices.Resource(), nil
+}
+
+type resourceOpenerGetter func(r *http.Request, tagKinds ...string) (coreresource.Opener, error)
+
+func (rog resourceOpenerGetter) Opener(r *http.Request, tagKinds ...string) (coreresource.Opener, error) {
+	return rog(r, tagKinds...)
 }

@@ -14,9 +14,11 @@ import (
 	http "net/http"
 	reflect "reflect"
 
+	gomock "go.uber.org/mock/gomock"
+
+	"github.com/juju/juju/apiserver/internal/handlers/resources"
 	application "github.com/juju/juju/core/application"
 	unit "github.com/juju/juju/core/unit"
-	gomock "go.uber.org/mock/gomock"
 )
 
 // MockApplicationServiceGetter is a mock of ApplicationServiceGetter interface.
@@ -43,10 +45,10 @@ func (m *MockApplicationServiceGetter) EXPECT() *MockApplicationServiceGetterMoc
 }
 
 // Application mocks base method.
-func (m *MockApplicationServiceGetter) Application(arg0 *http.Request) (ApplicationService, error) {
+func (m *MockApplicationServiceGetter) Application(arg0 *http.Request) (resources.ApplicationService, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Application", arg0)
-	ret0, _ := ret[0].(ApplicationService)
+	ret0, _ := ret[0].(resources.ApplicationService)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -64,19 +66,19 @@ type MockApplicationServiceGetterApplicationCall struct {
 }
 
 // Return rewrite *gomock.Call.Return
-func (c *MockApplicationServiceGetterApplicationCall) Return(arg0 ApplicationService, arg1 error) *MockApplicationServiceGetterApplicationCall {
+func (c *MockApplicationServiceGetterApplicationCall) Return(arg0 resources.ApplicationService, arg1 error) *MockApplicationServiceGetterApplicationCall {
 	c.Call = c.Call.Return(arg0, arg1)
 	return c
 }
 
 // Do rewrite *gomock.Call.Do
-func (c *MockApplicationServiceGetterApplicationCall) Do(f func(*http.Request) (ApplicationService, error)) *MockApplicationServiceGetterApplicationCall {
+func (c *MockApplicationServiceGetterApplicationCall) Do(f func(*http.Request) (resources.ApplicationService, error)) *MockApplicationServiceGetterApplicationCall {
 	c.Call = c.Call.Do(f)
 	return c
 }
 
 // DoAndReturn rewrite *gomock.Call.DoAndReturn
-func (c *MockApplicationServiceGetterApplicationCall) DoAndReturn(f func(*http.Request) (ApplicationService, error)) *MockApplicationServiceGetterApplicationCall {
+func (c *MockApplicationServiceGetterApplicationCall) DoAndReturn(f func(*http.Request) (resources.ApplicationService, error)) *MockApplicationServiceGetterApplicationCall {
 	c.Call = c.Call.DoAndReturn(f)
 	return c
 }
