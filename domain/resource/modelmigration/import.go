@@ -91,26 +91,20 @@ func (i *importOperation) Execute(ctx context.Context, model description.Model) 
 		}
 
 		for _, res := range resources {
-			// The application revision may be unset, in this case we will get a
-			// struct with zero values. IsZero is used on the timestamp to check
-			// this, as this is the way it was done in 3.6.
-			if appRevision := res.ApplicationRevision(); !appRevision.Timestamp().IsZero() {
-				arg, err := importResourceRevision(res.Name(), appRevision)
-				if err != nil {
-					return errors.Errorf("importing resource %q: %w", res.Name(), err)
-				}
-				appArgs.Resources = append(appArgs.Resources, arg)
+			arg, err := importResource(res)
+			if err != nil {
+				return errors.Errorf("importing resource %q: %w", res.Name(), err)
 			}
+			appArgs.Resources = append(appArgs.Resources, arg)
 		}
 
 		for _, unit := range app.Units() {
 			unitResources := unit.Resources()
 			for _, res := range unitResources {
-				unitRevision := res.Revision()
 				appArgs.UnitResources = append(appArgs.UnitResources, resource.ImportUnitResourceInfo{
 					ResourceName: res.Name(),
 					UnitName:     unit.Name(),
-					Timestamp:    unitRevision.Timestamp(),
+					Timestamp:    res.Timestamp(),
 				})
 			}
 		}
@@ -140,16 +134,25 @@ func (i *importOperation) Rollback(ctx context.Context, model description.Model)
 	return nil
 }
 
-// importResourceRevision converts a ResourceRevision description into an
-// argument for SetResource.
-func importResourceRevision(name string, rev description.ResourceRevision) (resource.ImportResourceInfo, error) {
+// importResourceRevision converts a description.Resource into an argument for
+// ImportResource.
+func importResource(rev description.Resource) (resource.ImportResourceInfo, error) {
+	importInfo := resource.ImportResourceInfo{
+		Timestamp: rev.Timestamp(),
+	}
+
+	name := rev.Name()
 	if name == "" {
 		return resource.ImportResourceInfo{}, errors.Errorf("got empty resource name: %w", resourceerrors.ResourceNameNotValid)
 	}
+	importInfo.Name = name
+
 	origin, err := charmresource.ParseOrigin(rev.Origin())
 	if err != nil {
 		return resource.ImportResourceInfo{}, errors.Errorf("parsing origin: %w: %w", resourceerrors.OriginNotValid, err)
 	}
+	importInfo.Origin = origin
+
 	revision := rev.Revision()
 	switch origin {
 	case charmresource.OriginStore:
@@ -171,10 +174,6 @@ func importResourceRevision(name string, rev description.ResourceRevision) (reso
 			"unexpected origin %s: %w", origin, resourceerrors.OriginNotValid,
 		)
 	}
-	return resource.ImportResourceInfo{
-		Name:      name,
-		Origin:    origin,
-		Revision:  rev.Revision(),
-		Timestamp: rev.Timestamp(),
-	}, nil
+
+	return importInfo, nil
 }

@@ -562,7 +562,49 @@ func (st *State) GetResourcesByApplicationID(
 	if err != nil {
 		return nil, errors.Capture(err)
 	}
+	var resources []coreresource.Resource
+	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+		resources, err = st.getResourcesByApplicationID(ctx, tx, applicationID)
+		return err
+	})
+	return resources, errors.Capture(err)
+}
 
+// GetResourcesByApplicationName returns the list of resource for the given
+// application. Returns an error if the operation fails at any point in the
+// process.
+//
+// The following error types can be expected to be returned:
+//   - [resourceerrors.ApplicationNotFound] if the application ID is not an
+//     existing one.
+//
+// If the application exists but doesn't have any resources, no error are
+// returned, the result just contains an empty list.
+func (st *State) GetResourcesByApplicationName(
+	ctx context.Context,
+	name string,
+) ([]coreresource.Resource, error) {
+	db, err := st.DB()
+	if err != nil {
+		return nil, errors.Capture(err)
+	}
+	var resources []coreresource.Resource
+	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) error {
+		applicationID, err := st.getApplicationUUID(ctx, tx, name)
+		if err != nil {
+			return errors.Errorf("getting ID of application %s: %w", name, err)
+		}
+		resources, err = st.getResourcesByApplicationID(ctx, tx, applicationID)
+		return err
+	})
+	return resources, errors.Capture(err)
+}
+
+func (st *State) getResourcesByApplicationID(
+	ctx context.Context,
+	tx *sqlair.TX,
+	applicationID application.ID,
+) ([]coreresource.Resource, error) {
 	// Prepare the application ID to query resources by application.
 	appID := resourceIdentity{
 		ApplicationUUID: applicationID.String(),
@@ -580,22 +622,20 @@ AND state = 'available'`
 	}
 
 	var resources []resourceView
-	err = db.Txn(ctx, func(ctx context.Context, tx *sqlair.TX) (err error) {
-		// Query to get all resources for the given application.
-		err = tx.Query(ctx, getResourcesStmt, appID).GetAll(&resources)
-		if errors.Is(err, sqlair.ErrNoRows) {
-			if exists, err := st.checkApplicationIDExists(ctx, tx, applicationID); err != nil {
-				return errors.Errorf("checking if application with id %q exists: %w", applicationID, err)
-			} else if !exists {
-				return errors.Errorf("no application with id %q: %w", applicationID, resourceerrors.ApplicationNotFound)
-			}
-			return nil // nothing found
+	// Query to get all resources for the given application.
+	err = tx.Query(ctx, getResourcesStmt, appID).GetAll(&resources)
+	if errors.Is(err, sqlair.ErrNoRows) {
+		if exists, err := st.checkApplicationIDExists(ctx, tx, applicationID); err != nil {
+			return nil, errors.Errorf("checking if application with id %q exists: %w", applicationID, err)
+		} else if !exists {
+			return nil, errors.Errorf("no application with id %q: %w", applicationID, resourceerrors.ApplicationNotFound)
 		}
-		if err != nil {
-			return errors.Capture(err)
-		}
-		return nil
-	})
+		// Nothing found.
+		return nil, nil
+	} else if err != nil {
+		return nil, errors.Capture(err)
+	}
+
 	// Convert each resourceView to a resource
 	var result []coreresource.Resource
 	for _, res := range resources {

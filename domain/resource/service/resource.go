@@ -72,6 +72,17 @@ type State interface {
 	// returned, the result just contains an empty list.
 	GetResourcesByApplicationID(ctx context.Context, applicationID coreapplication.ID) ([]coreresource.Resource, error)
 
+	// GetResourcesByApplicationName returns the list of resource for the given
+	// application.
+	//
+	// The following error types can be expected to be returned:
+	//   - [resourceerrors.ApplicationNotFound] if the application ID is not an
+	//     existing one.
+	//
+	// If the application exists but doesn't have any resources, no error are
+	// returned, the result just contains an empty list.
+	GetResourcesByApplicationName(ctx context.Context, name string) ([]coreresource.Resource, error)
+
 	// GetResourceType finds the type of the given resource from the resource table.
 	//
 	// The following error types can be expected to be returned:
@@ -303,6 +314,24 @@ func (s *Service) GetResourcesByApplicationID(ctx context.Context, applicationID
 		return nil, errors.Errorf("%w: %w", err, resourceerrors.ApplicationIDNotValid)
 	}
 	return s.st.GetResourcesByApplicationID(ctx, applicationID)
+}
+
+// GetResourcesByApplicationName retrieves resources associated with a specific
+// application name. Returns a slice of resources or an error if the operation
+// fails.
+//
+// The following error types can be expected to be returned:
+//   - [resourceerrors.ApplicationNotFound] is returned if the application ID
+//     is not an existing one.
+//
+// If the application doesn't have any resources, no error are
+// returned, the result just contain an empty list.
+func (s *Service) GetResourcesByApplicationName(ctx context.Context, name string) ([]coreresource.Resource,
+	error) {
+	if name == "" {
+		return nil, resourceerrors.ArgumentNotValid
+	}
+	return s.st.GetResourcesByApplicationName(ctx, name)
 }
 
 // GetResource returns the identified application resource.
