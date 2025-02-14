@@ -624,14 +624,13 @@ func (b *BundleAPI) bundleDataApplications(
 func applicationDataResources(resources []description.Resource) map[string]interface{} {
 	var resourceData map[string]interface{}
 	for _, res := range resources {
-		appRev := res.ApplicationRevision()
-		if appRev == nil || appRev.Origin() != resource.OriginStore.String() {
+		if res.Origin() != resource.OriginStore.String() {
 			continue
 		}
 		if resourceData == nil {
 			resourceData = make(map[string]interface{})
 		}
-		resourceData[res.Name()] = res.ApplicationRevision().Revision()
+		resourceData[res.Name()] = res.Revision()
 	}
 	return resourceData
 }

@@ -475,22 +475,7 @@ func getUsedResources(model description.Model) []params.SerializedModelResource 
 	var out []params.SerializedModelResource
 	for _, app := range model.Applications() {
 		for _, resource := range app.Resources() {
-			outRes := resourceToSerialized(app.Name(), resource)
-
-			// Hunt through the application's units and look for
-			// revisions of this resource. This is particularly
-			// efficient or clever but will be fine even with 1000's
-			// of units and 10's of resources.
-			outRes.UnitRevisions = make(map[string]params.SerializedModelResourceRevision)
-			for _, unit := range app.Units() {
-				for _, unitResource := range unit.Resources() {
-					if unitResource.Name() == resource.Name() {
-						outRes.UnitRevisions[unit.Name()] = revisionToSerialized(unitResource.Revision())
-					}
-				}
-			}
-
-			out = append(out, outRes)
+			out = append(out, resourceToSerialized(app.Name(), resource))
 		}
 
 	}
@@ -501,24 +486,21 @@ func resourceToSerialized(app string, desc description.Resource) params.Serializ
 	return params.SerializedModelResource{
 		Application:         app,
 		Name:                desc.Name(),
-		ApplicationRevision: revisionToSerialized(desc.ApplicationRevision()),
-		CharmStoreRevision:  revisionToSerialized(desc.CharmStoreRevision()),
+		ApplicationRevision: revisionToSerialized(desc),
 	}
 }
 
-func revisionToSerialized(rr description.ResourceRevision) params.SerializedModelResourceRevision {
+func revisionToSerialized(rr description.Resource) params.SerializedModelResourceRevision {
 	if rr == nil {
 		return params.SerializedModelResourceRevision{}
 	}
 	return params.SerializedModelResourceRevision{
 		Revision:       rr.Revision(),
 		Type:           rr.Type(),
-		Path:           rr.Path(),
-		Description:    rr.Description(),
 		Origin:         rr.Origin(),
-		FingerprintHex: rr.FingerprintHex(),
+		FingerprintHex: rr.SHA384(),
 		Size:           rr.Size(),
 		Timestamp:      rr.Timestamp(),
-		Username:       rr.Username(),
+		Username:       rr.RetrievedBy(),
 	}
 }
