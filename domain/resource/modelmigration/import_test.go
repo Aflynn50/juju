@@ -75,10 +75,8 @@ func (s *importSuite) TestImport(c *gc.C) {
 	res1Revision := 1
 	res1Origin := resource.OriginStore
 	res1Time := time.Now().Truncate(time.Second).UTC()
-	res1 := app.AddResource(description.ResourceArgs{
-		Name: res1Name,
-	})
-	res1.SetApplicationRevision(description.ResourceRevisionArgs{
+	_ = app.AddResource(description.ResourceArgs{
+		Name:      res1Name,
 		Revision:  res1Revision,
 		Origin:    res1Origin.String(),
 		Timestamp: res1Time,
@@ -87,10 +85,8 @@ func (s *importSuite) TestImport(c *gc.C) {
 	res2Revision := -1
 	res2Origin := resource.OriginUpload
 	res2Time := time.Now().Truncate(time.Second).Add(-time.Hour).UTC()
-	res2 := app.AddResource(description.ResourceArgs{
-		Name: res2Name,
-	})
-	res2.SetApplicationRevision(description.ResourceRevisionArgs{
+	_ = app.AddResource(description.ResourceArgs{
+		Name:      res2Name,
 		Revision:  res2Revision,
 		Origin:    res2Origin.String(),
 		Timestamp: res2Time,
@@ -101,10 +97,8 @@ func (s *importSuite) TestImport(c *gc.C) {
 		Tag: names.NewUnitTag(unitName),
 	})
 	unit.AddResource(description.UnitResourceArgs{
-		Name: res1Name,
-		RevisionArgs: description.ResourceRevisionArgs{
-			Timestamp: unitResTime,
-		},
+		Name:      res1Name,
+		Timestamp: unitResTime,
 	})
 
 	s.resourceService.EXPECT().ImportResources(gomock.Any(), []domainresource.ImportResourcesArg{{
@@ -147,10 +141,8 @@ func (s *importSuite) TestImportRevisionNotValidOriginUpload(c *gc.C) {
 	resRevision := 1
 	resOrigin := resource.OriginUpload
 	resTime := time.Now().Truncate(time.Second).UTC()
-	res := app.AddResource(description.ResourceArgs{
-		Name: resName,
-	})
-	res.SetApplicationRevision(description.ResourceRevisionArgs{
+	_ = app.AddResource(description.ResourceArgs{
+		Name:      resName,
 		Revision:  resRevision,
 		Origin:    resOrigin.String(),
 		Timestamp: resTime,
@@ -176,10 +168,8 @@ func (s *importSuite) TestImportRevisionNotValidOriginStore(c *gc.C) {
 	resRevision := -1
 	resOrigin := resource.OriginStore
 	resTime := time.Now().Truncate(time.Second).UTC()
-	res := app.AddResource(description.ResourceArgs{
-		Name: resName,
-	})
-	res.SetApplicationRevision(description.ResourceRevisionArgs{
+	_ = app.AddResource(description.ResourceArgs{
+		Name:      resName,
 		Revision:  resRevision,
 		Origin:    resOrigin.String(),
 		Timestamp: resTime,
@@ -200,10 +190,8 @@ func (s *importSuite) TestImportOriginNotValid(c *gc.C) {
 	})
 	resName := "resource-1"
 	resTime := time.Now().Truncate(time.Second).UTC()
-	res := app.AddResource(description.ResourceArgs{
-		Name: resName,
-	})
-	res.SetApplicationRevision(description.ResourceRevisionArgs{
+	_ = app.AddResource(description.ResourceArgs{
+		Name:      resName,
 		Origin:    "bad-origin",
 		Timestamp: resTime,
 	})
@@ -222,10 +210,8 @@ func (s *importSuite) TestImportResourceNameNotValid(c *gc.C) {
 		Tag: names.NewApplicationTag(appName),
 	})
 	resTime := time.Now().Truncate(time.Second).UTC()
-	res := app.AddResource(description.ResourceArgs{
-		Name: "",
-	})
-	res.SetApplicationRevision(description.ResourceRevisionArgs{
+	_ = app.AddResource(description.ResourceArgs{
+		Name:      "",
 		Timestamp: resTime,
 	})
 

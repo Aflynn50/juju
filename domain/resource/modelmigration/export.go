@@ -77,17 +77,13 @@ func (e *exportOperation) Execute(ctx context.Context, model description.Model) 
 			return errors.Errorf("getting resource of application %s: %w", app.Name(), err)
 		}
 		for _, res := range resources {
-			resArgs := description.ResourceArgs{
+			app.AddResource(description.ResourceArgs{
 				Name:      res.Name,
 				Type:      res.Type.String(),
 				Origin:    res.Origin.String(),
 				Timestamp: res.Timestamp,
-			}
-			revision := res.Revision
-			if revision > 0 {
-				resArgs.Revision = &revision
-			}
-			app.AddResource(resArgs)
+				Revision:  res.Revision,
+			})
 		}
 	}
 	return nil
